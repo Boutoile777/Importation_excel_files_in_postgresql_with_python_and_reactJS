@@ -1,0 +1,14 @@
+# Node/React
+frontend/dashboard/node_modules/
+frontend/build/
+frontend/.env
+
+# Python/Flask
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Global
+.DS_Store
+.env

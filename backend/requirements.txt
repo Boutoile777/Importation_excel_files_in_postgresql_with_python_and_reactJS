@@ -1,0 +1,11 @@
+# Pour tester la connexion avec la base de données sql
+1- Mettre confgi.ini, config.py et test.py dans le même dossier
+2- Se connecter à notre environnement virtuel
+3- Lancer un "python test.py" sur le terminal
+
+# Logique du backend
+
+
+
+
+
