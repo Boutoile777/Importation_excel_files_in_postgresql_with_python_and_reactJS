@@ -13,9 +13,6 @@ backend/.env
 # Logs
 *.log
 
-# Bases de données temporaires
-*.sqlite3
-*.db
 
 # Tests / couverture
 .coverage
