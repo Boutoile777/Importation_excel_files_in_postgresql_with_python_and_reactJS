@@ -5,9 +5,22 @@ frontend/.env
 
 # Python/Flask
 backend/venv/
+backend/node_modules/
 backend/__pycache__/
-backend/*.pyc
+backend/**/*.pyc
 backend/.env
+
+# Logs
+*.log
+
+# Bases de données temporaires
+*.sqlite3
+*.db
+
+# Tests / couverture
+.coverage
+htmlcov/
+coverage.xml
 
 # Global
 .DS_Store
