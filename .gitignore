@@ -8,9 +8,9 @@ backend/node_modules/
 backend/__pycache__/
 backend/**/*.pyc/
 backend/.env/
-backend/app_13_5_25.py/
-backend/app_22_05.py/
-backend/routes/auth.py/
+backend/app_13_5_25.py
+backend/app_22_05.py
+backend/routes/auth.py
 # Logs
 *.log
 
