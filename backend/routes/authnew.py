@@ -484,3 +484,66 @@ def import_excel():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+
+
+
+
+
+#Routes pour récupérer puis afficher toute les opérations faites
+
+
+@auth_bp.route('/projets_financement', methods=['GET'])
+@login_required
+def get_projets_financement():
+    try:
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    id_projet,
+                    date_comite_validation,
+                    intitule_projet,
+                    cout_total_projet,
+                    credit_solicite,
+                    credit_accorde,
+                    refinancement_accorde,
+                    total_financement,
+                    statut_dossier,
+                    credit_accorde_statut,
+                    created_by,
+                    created_at
+                FROM projet_financement
+                ORDER BY created_at DESC
+            """)
+            rows = cur.fetchall()
+
+            projets = [
+                {
+                    'id_projet': r[0],
+                    'date_comite_validation': r[1],
+                    'intitule_projet': r[2],
+                    'cout_total_projet': r[3],
+                    'credit_solicite': r[4],
+                    'credit_accorde': r[5],
+                    'refinancement_accorde': r[6],
+                    'total_financement': r[7],
+                    'statut_dossier': r[8],
+                    'credit_accorde_statut': r[9],
+                    'created_by': r[10],
+                    'created_at': r[11].strftime('%Y-%m-%d %H:%M:%S') if r[11] else ''
+                }
+                for r in rows
+            ]
+
+        return jsonify(projets), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()

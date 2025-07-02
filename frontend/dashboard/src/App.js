@@ -14,7 +14,10 @@ import Historique from './pages/Historique';
 import MonCompte from './pages/MonCompte';
 import Facilite from './pages/Facilite';
 import Ex from './pages/Ex';
+import ToutesOperationsPage from './pages/ToutesOperationsPage';
+ // 🆕 Import ajouté
 
+// Composant pour protéger les routes privées
 const PrivateRoute = ({ element }) => {
   const { user } = useAuth();
   return user ? element : <Navigate to="/signin" />;
@@ -25,15 +28,15 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Redirection vers /signin quand on accède à la racine */}
+          {/* Redirection vers /signin à la racine */}
           <Route path="/" element={<Navigate to="/signin" />} />
 
-          {/* Authentification */}
+          {/* Routes publiques */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgotpasseword" element={<ForgotPassword />} />
 
-          {/* Pages privées */}
+          {/* Routes privées dans le layout Dashboard */}
           <Route element={<PrivateRoute element={<DashboardUserLayout />} />}>
             <Route path="/dashboard" element={<Home />} />
             <Route path="/dashboard/comment-ca-marche" element={<CommentCaMarche />} />
@@ -42,6 +45,8 @@ function App() {
             <Route path="/dashboard/importer" element={<ImporterDonnees />} />
             <Route path="/dashboard/historique" element={<Historique />} />
             <Route path="/dashboard/mon-compte" element={<MonCompte />} />
+            <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
+ {/* 🆕 Route ajoutée */}
           </Route>
         </Routes>
       </Router>
@@ -50,7 +55,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
