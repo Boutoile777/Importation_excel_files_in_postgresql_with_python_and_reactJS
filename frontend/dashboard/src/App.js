@@ -47,7 +47,8 @@ function App() {
             <Route path="/dashboard/historique" element={<Historique />} />
             <Route path="/dashboard/mon-compte" element={<MonCompte />} />
             <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
-             <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
+            <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
+
  {/* 🆕 Route ajoutée */}
           </Route>
         </Routes>
