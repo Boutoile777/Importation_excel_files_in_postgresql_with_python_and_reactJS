@@ -4,7 +4,7 @@ import { FiInbox } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logo from '../assets/logo.png'; // Assure-toi que ce logo est importé en base64 (config webpack ou autre)
+import logo from '../assets/logo.png'; // Assure-toi que ce logo est bien un base64 ou remplace par URL/chemin valide
 
 const customStyles = {
   headCells: {
@@ -35,7 +35,7 @@ const colonnes = [
   { name: 'Commune', selector: row => row.nom_commune, sortable: true, minWidth: '120px' },
   { name: 'Filière', selector: row => row.nom_filiere, sortable: true, minWidth: '120px' },
   { name: 'PSF', selector: row => row.nom_psf, sortable: true, minWidth: '120px' },
-  { name: 'Promoteur', selector: row => `${row.nom_promoteur} ${row.prenom_promoteur}`, sortable: true, minWidth: '180px' },
+  { name: 'Promoteur', selector: row => row.nom_promoteur , sortable: true, minWidth: '180px' },
   { name: 'Statut Dossier', selector: row => row.statut_dossier, sortable: true, minWidth: '150px' },
   { name: 'Crédit Accordé Statut', selector: row => row.credit_accorde_statut, sortable: true, minWidth: '170px' },
   { name: 'Type Projet', selector: row => row.nom_type_projet, sortable: true, minWidth: '150px' },
@@ -98,7 +98,6 @@ function ProjetsFinancementTable() {
 
     const tableColumn = colonnes.map(col => col.name);
 
-    // Préparation des données brutes (sans formatage string avec espaces)
     const keyMap = {
       'Date Comité': 'date_comite_validation',
       'Intitulé Projet': 'intitule_projet',
@@ -110,7 +109,7 @@ function ProjetsFinancementTable() {
       'Commune': 'nom_commune',
       'Filière': 'nom_filiere',
       'PSF': 'nom_psf',
-      'Promoteur': null,
+      'Promoteur': null, // gestion spécifique
       'Statut Dossier': 'statut_dossier',
       'Crédit Accordé Statut': 'credit_accorde_statut',
       'Type Projet': 'nom_type_projet',
@@ -134,7 +133,6 @@ function ProjetsFinancementTable() {
               'total_financement',
             ].includes(key)
           ) {
-            // Retourne nombre brut
             return Number(row[key]);
           }
           return row[key].toString();
@@ -145,9 +143,9 @@ function ProjetsFinancementTable() {
 
     doc.setFontSize(14);
     doc.text('Projets de Financement', 14, 15);
-
-    // Ajout du logo synchroniquement (logo doit être base64 importé)
-    doc.addImage(logo, 'PNG', 250, 5, 40, 20);
+    if(logo) {
+      doc.addImage(logo, 'PNG', 250, 5, 40, 20);
+    }
 
     autoTable(doc, {
       head: [tableColumn],
@@ -171,8 +169,6 @@ function ProjetsFinancementTable() {
         );
       },
       didParseCell: data => {
-        // Colonnes montants (selon index dans colonnes)
-        // Ici Coût Total = col 2, Crédit Solicité = 3, etc. => indices 2 à 6
         const montantCols = [2, 3, 4, 5, 6];
         if (
           montantCols.includes(data.column.index) &&
@@ -186,14 +182,8 @@ function ProjetsFinancementTable() {
     doc.save('projets_financement.pdf');
   };
 
-  if (loading)
-    return (
-      <div className="p-6 text-center text-gray-700">Chargement des projets...</div>
-    );
-  if (error)
-    return (
-      <div className="p-6 text-center text-red-600">Erreur: {error}</div>
-    );
+  if (loading) return <div className="p-6 text-center text-gray-700">Chargement des projets...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Erreur: {error}</div>;
 
   const NoDataMessage = () => (
     <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">

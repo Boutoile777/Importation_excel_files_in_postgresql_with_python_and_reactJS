@@ -330,7 +330,8 @@ def add_type_projet():
             conn.close()
 
 #Supprimer une facilité créée 
-@auth_bp.route('/types_projets/<string:id_type_projet>', methods=['DELETE'])
+
+@auth_bp.route('/types_projets/<id_type_projet>', methods=['DELETE'])
 @login_required
 def delete_type_projet(id_type_projet):
     try:
@@ -341,7 +342,7 @@ def delete_type_projet(id_type_projet):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM type_projet WHERE id_type_projet = %s", (id_type_projet,))
             if cur.rowcount == 0:
-                return jsonify({'error': 'Facilité non trouvée.'}), 404
+                return jsonify({'error': "Facilité introuvable ou déjà supprimée."}), 404
             conn.commit()
 
         return jsonify({'message': 'Facilité supprimée avec succès.'}), 200
@@ -352,6 +353,7 @@ def delete_type_projet(id_type_projet):
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
 
 
 
@@ -519,6 +521,62 @@ def import_excel():
 #Routes pour récupérer puis afficher toute les opérations faites
 
 
+# @auth_bp.route('/projets_financement', methods=['GET'])
+# @login_required
+# def get_projets_financement():
+#     try:
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+#         with conn.cursor() as cur:
+#             cur.execute("""
+#                 SELECT
+#                     id_projet,
+#                     date_comite_validation,
+#                     intitule_projet,
+#                     cout_total_projet,
+#                     credit_solicite,
+#                     credit_accorde,
+#                     refinancement_accorde,
+#                     total_financement,
+#                     statut_dossier,
+#                     credit_accorde_statut,
+#                     created_by,
+#                     created_at
+#                 FROM projet_financement
+#                 ORDER BY created_at DESC
+#             """)
+#             rows = cur.fetchall()
+
+#             projets = [
+#                 {
+#                     'id_projet': r[0],
+#                     'date_comite_validation': r[1],
+#                     'intitule_projet': r[2],
+#                     'cout_total_projet': r[3],
+#                     'credit_solicite': r[4],
+#                     'credit_accorde': r[5],
+#                     'refinancement_accorde': r[6],
+#                     'total_financement': r[7],
+#                     'statut_dossier': r[8],
+#                     'credit_accorde_statut': r[9],
+#                     'created_by': r[10],
+#                     'created_at': r[11].strftime('%Y-%m-%d %H:%M:%S') if r[11] else ''
+#                 }
+#                 for r in rows
+#             ]
+
+#         return jsonify(projets), 200
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+#     finally:
+#         if 'conn' in locals() and conn:
+#             conn.close()
+
+
 @auth_bp.route('/projets_financement', methods=['GET'])
 @login_required
 def get_projets_financement():
@@ -530,20 +588,31 @@ def get_projets_financement():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT
-                    id_projet,
-                    date_comite_validation,
-                    intitule_projet,
-                    cout_total_projet,
-                    credit_solicite,
-                    credit_accorde,
-                    refinancement_accorde,
-                    total_financement,
-                    statut_dossier,
-                    credit_accorde_statut,
-                    created_by,
-                    created_at
-                FROM projet_financement
-                ORDER BY created_at DESC
+                    pf.id_projet,
+                    pf.date_comite_validation,
+                    pf.intitule_projet,
+                    pf.cout_total_projet,
+                    pf.credit_solicite,
+                    pf.credit_accorde,
+                    pf.refinancement_accorde,
+                    pf.total_financement,
+                    c.nom_commune,
+                    f.nom_filiere,
+                    ps.nom_psf,
+                    p.nom_promoteur,
+                    p.nom_entite,
+                    pf.statut_dossier,
+                    pf.credit_accorde_statut,
+                    tp.nom_facilite,
+                    pf.created_by,
+                    pf.created_at
+                FROM projet_financement pf
+                LEFT JOIN commune c ON pf.id_commune = c.id_commune
+                LEFT JOIN filiere f ON pf.id_filiere = f.id_filiere
+                LEFT JOIN psf ps ON pf.id_psf = ps.id_psf
+                LEFT JOIN promoteur p ON pf.id_promoteur = p.id_promoteur
+                LEFT JOIN type_projet tp ON pf.id_type_projet = tp.id_type_projet
+                ORDER BY pf.created_at DESC
             """)
             rows = cur.fetchall()
 
@@ -557,10 +626,16 @@ def get_projets_financement():
                     'credit_accorde': r[5],
                     'refinancement_accorde': r[6],
                     'total_financement': r[7],
-                    'statut_dossier': r[8],
-                    'credit_accorde_statut': r[9],
-                    'created_by': r[10],
-                    'created_at': r[11].strftime('%Y-%m-%d %H:%M:%S') if r[11] else ''
+                    'nom_commune': r[8],
+                    'nom_filiere': r[9],
+                    'nom_psf': r[10],
+                    'nom_promoteur': r[11],
+                    'prenom_promoteur': r[12],  # ici c'est nom_entite qu'on utilise
+                    'statut_dossier': r[13],
+                    'credit_accorde_statut': r[14],
+                    'nom_type_projet': r[15],
+                    'created_by': r[16],
+                    'created_at': r[17].strftime('%Y-%m-%d %H:%M:%S') if r[17] else None
                 }
                 for r in rows
             ]
