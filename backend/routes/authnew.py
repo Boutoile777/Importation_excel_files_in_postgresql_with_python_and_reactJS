@@ -648,3 +648,39 @@ def get_projets_financement():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+
+#Route pour affichage dynamique des facilités
+
+@auth_bp.route('/projets/<string:id_type_projet>', methods=['GET'])
+@login_required
+def get_projets_par_facilite(id_type_projet):
+    try:
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id_projet, intitule_projet, cout_total_projet
+                FROM projet_financement
+                WHERE id_type_projet = %s
+            """, (id_type_projet,))
+            rows = cur.fetchall()
+
+            projets = [
+                {
+                    'id_projet': row[0],
+                    'intitule_projet': row[1],
+                    'cout_total_projet': row[2]
+                } for row in rows
+            ]
+
+        return jsonify(projets), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if conn:
+            conn.close()

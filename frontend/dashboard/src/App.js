@@ -14,6 +14,7 @@ import Historique from './pages/Historique';
 import MonCompte from './pages/MonCompte';
 import Facilite from './pages/Facilite';
 import Ex from './pages/Ex';
+import ProjetsParFacilite from './pages/ProjetsParFacilite';
 import ToutesOperationsPage from './pages/ToutesOperationsPage';
  // 🆕 Import ajouté
 
@@ -46,6 +47,7 @@ function App() {
             <Route path="/dashboard/historique" element={<Historique />} />
             <Route path="/dashboard/mon-compte" element={<MonCompte />} />
             <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
+             <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
  {/* 🆕 Route ajoutée */}
           </Route>
         </Routes>
