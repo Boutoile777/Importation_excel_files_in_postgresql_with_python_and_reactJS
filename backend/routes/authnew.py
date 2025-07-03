@@ -662,18 +662,58 @@ def get_projets_par_facilite(id_type_projet):
 
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id_projet, intitule_projet, cout_total_projet
-                FROM projet_financement
-                WHERE id_type_projet = %s
+                SELECT
+                    pf.id_projet,
+                    pf.date_comite_validation,
+                    pf.intitule_projet,
+                    pf.cout_total_projet,
+                    pf.credit_solicite,
+                    pf.credit_accorde,
+                    pf.refinancement_accorde,
+                    pf.total_financement,
+                    c.nom_commune,
+                    f.nom_filiere,
+                    ps.nom_psf,
+                    p.nom_promoteur,
+                    p.nom_entite,
+                    pf.statut_dossier,
+                    pf.credit_accorde_statut,
+                    tp.nom_facilite,
+                    pf.created_by,
+                    pf.created_at
+                FROM projet_financement pf
+                LEFT JOIN commune c ON pf.id_commune = c.id_commune
+                LEFT JOIN filiere f ON pf.id_filiere = f.id_filiere
+                LEFT JOIN psf ps ON pf.id_psf = ps.id_psf
+                LEFT JOIN promoteur p ON pf.id_promoteur = p.id_promoteur
+                LEFT JOIN type_projet tp ON pf.id_type_projet = tp.id_type_projet
+                WHERE pf.id_type_projet = %s
+                ORDER BY pf.created_at DESC
             """, (id_type_projet,))
             rows = cur.fetchall()
 
             projets = [
                 {
-                    'id_projet': row[0],
-                    'intitule_projet': row[1],
-                    'cout_total_projet': row[2]
-                } for row in rows
+                    'id_projet': r[0],
+                    'date_comite_validation': r[1],
+                    'intitule_projet': r[2],
+                    'cout_total_projet': r[3],
+                    'credit_solicite': r[4],
+                    'credit_accorde': r[5],
+                    'refinancement_accorde': r[6],
+                    'total_financement': r[7],
+                    'nom_commune': r[8],
+                    'nom_filiere': r[9],
+                    'nom_psf': r[10],
+                    'nom_promoteur': r[11],
+                    'prenom_promoteur': r[12],  # ici on renvoie nom_entite en prénom promoteur
+                    'statut_dossier': r[13],
+                    'credit_accorde_statut': r[14],
+                    'nom_type_projet': r[15],
+                    'created_by': r[16],
+                    'created_at': r[17].strftime('%Y-%m-%d %H:%M:%S') if r[17] else None
+                }
+                for r in rows
             ]
 
         return jsonify(projets), 200
@@ -682,5 +722,5 @@ def get_projets_par_facilite(id_type_projet):
         return jsonify({'error': str(e)}), 500
 
     finally:
-        if conn:
+        if 'conn' in locals() and conn:
             conn.close()
