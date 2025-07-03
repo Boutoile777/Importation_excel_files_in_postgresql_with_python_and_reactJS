@@ -13,6 +13,10 @@ const customStyles = {
       paddingRight: '24px',
       fontWeight: 'bold',
       fontSize: '16px',
+      whiteSpace: 'normal',    // autoriser retour à la ligne
+      wordWrap: 'break-word',  // couper les mots si nécessaire
+      lineHeight: '1.2',       // ajuster la hauteur de ligne pour lisibilité
+      minHeight: '48px',       // ajuster la hauteur pour que ça tienne bien
     },
   },
   cells: {
@@ -20,9 +24,14 @@ const customStyles = {
       paddingLeft: '24px',
       paddingRight: '24px',
       fontSize: '14px',
+      whiteSpace: 'normal',
+      wordWrap: 'break-word',
+      lineHeight: '1.2',
+
     },
   },
 };
+
 
 const colonnes = [
   { name: 'Date Comité', selector: row => row.date_comite_validation, sortable: true, minWidth: '150px' },
@@ -38,9 +47,9 @@ const colonnes = [
   { name: 'Promoteur', selector: row => row.nom_promoteur , sortable: true, minWidth: '180px' },
   { name: 'Statut Dossier', selector: row => row.statut_dossier, sortable: true, minWidth: '150px' },
   { name: 'Crédit Accordé Statut', selector: row => row.credit_accorde_statut, sortable: true, minWidth: '170px' },
-  { name: 'Type Projet', selector: row => row.nom_type_projet, sortable: true, minWidth: '150px' },
-  { name: 'Créé Le', selector: row => row.created_at, sortable: true, minWidth: '170px' },
-  { name: 'Auteur', selector: row => row.created_by, sortable: true, minWidth: '150px' },
+  { name: 'Type projet', selector: row => row.nom_type_projet, sortable: true, minWidth: '150px' },
+  { name: 'Créé le', selector: row => row.created_at, sortable: true, minWidth: '170px' },
+  { name: 'Créé par', selector: row => row.created_by, sortable: true, minWidth: '150px' },
 ];
 
 function ProjetsFinancementTable() {
