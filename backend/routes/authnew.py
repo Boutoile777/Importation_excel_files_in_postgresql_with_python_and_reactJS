@@ -210,7 +210,7 @@ def update_current_user():
         conn.close()
 
 
-#Routes de sélection du type de projet avant importation des données
+
 
 @auth_bp.route('/type_projets', methods=['GET'])
 @login_required
@@ -237,7 +237,7 @@ def get_type_projets():
         if 'conn' in locals() and conn:
             conn.close()
 
-
+#Routes de sélection du type de projet avant importation des données
 
 @auth_bp.route('/selection_type_projet', methods=['POST'])
 @login_required
@@ -329,8 +329,34 @@ def add_type_projet():
         if 'conn' in locals() and conn:
             conn.close()
 
+#Supprimer une facilité créée 
+@auth_bp.route('/types_projets/<string:id_type_projet>', methods=['DELETE'])
+@login_required
+def delete_type_projet(id_type_projet):
+    try:
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM type_projet WHERE id_type_projet = %s", (id_type_projet,))
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Facilité non trouvée.'}), 404
+            conn.commit()
+
+        return jsonify({'message': 'Facilité supprimée avec succès.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
 
 
+
+
+#Envoyer les données dans nos tables présentes dans postgresql
 @auth_bp.route("/import_excel", methods=["POST"])
 @login_required
 def import_excel():

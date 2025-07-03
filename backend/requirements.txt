@@ -10,6 +10,7 @@ CORS
 configparser
 psycopg2
 bcrypt
+openpyxl
 
 
 

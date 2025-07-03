@@ -3,39 +3,39 @@ import React, { useState, useEffect } from 'react';
 function Facilite() {
   const [nomFacilite, setNomFacilite] = useState('');
   const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState(null); // ✅ true = succès, false = erreur
   const [facilites, setFacilites] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fonction pour charger les facilités
   const fetchFacilites = async () => {
     setLoading(true);
-    setMessage('');
     try {
       const res = await fetch('http://localhost:5000/auth/types_projets', {
-        credentials: 'include', // si tu utilises les cookies / session
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Erreur lors du chargement des facilités');
       const data = await res.json();
       setFacilites(data);
     } catch (error) {
       setMessage(error.message);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Chargement initial
   useEffect(() => {
     fetchFacilites();
   }, []);
 
-  // Soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+    setSuccess(null);
 
     if (!nomFacilite.trim()) {
       setMessage('Merci de remplir le champ nom de la facilité');
+      setSuccess(false);
       return;
     }
 
@@ -51,16 +51,57 @@ function Facilite() {
 
       if (!res.ok) {
         setMessage(data.error || "Erreur lors de l'ajout de la facilité");
+        setSuccess(false);
         return;
       }
 
-      // Ajout réussi : on recharge la liste
       setNomFacilite('');
-      setMessage('Facilité ajoutée avec succès !');
+      setMessage('✅ Facilité ajoutée avec succès !');
+      setSuccess(true);
       fetchFacilites();
-
     } catch (error) {
       setMessage('Erreur réseau : impossible de joindre le serveur');
+      setSuccess(false);
+    } finally {
+      setTimeout(() => {
+        setMessage('');
+        setSuccess(null);
+      }, 4000);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette facilité ?')) return;
+
+    setMessage('');
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`http://localhost:5000/auth/types_projets/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage(data.error || 'Erreur lors de la suppression');
+        setSuccess(false);
+      } else {
+        setMessage('✅ Facilité supprimée avec succès !');
+        setSuccess(true);
+        fetchFacilites(); // recharge la liste
+      }
+    } catch (error) {
+      setMessage('Erreur réseau lors de la suppression.');
+      setSuccess(false);
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setMessage('');
+        setSuccess(null);
+      }, 4000);
     }
   };
 
@@ -90,9 +131,13 @@ function Facilite() {
           </button>
 
           {message && (
-            <p className={`text-center ${message.includes('succès') ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`text-center text-xl ${
+                success === true ? 'text-green-700' : ''
+              } ${success === false ? 'text-red-700' : ''}`}
+            >
               {message}
-            </p>
+            </div>
           )}
         </form>
       </div>
@@ -117,7 +162,17 @@ function Facilite() {
                     Auteur : {f.auteur} — Créé le {f.date_creation || 'N/A'}
                   </p>
                 </div>
-                <div className="text-green-600 font-mono">{f.id_type_projet}</div>
+
+                <div className="flex items-center space-x-4">
+                  <span className="text-green-600 font-mono">{f.id_type_projet}</span>
+                  <button
+                    onClick={() => handleDelete(f.id_type_projet)}
+                    className="text-red-600 hover:text-red-800 font-semibold text-sm border border-red-500 px-3 py-1 rounded-md"
+                    disabled={loading}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
