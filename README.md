@@ -18,15 +18,6 @@ Ce projet permet d'importer des fichiers Excel dans une base de données Postgre
 
 ## 🧱 Structure du projet (Ceci est un aperçu général)
 
-Connexion/
-├── backend/ # API Flask + gestion BDD
-│ ├── routes/
-│ ├── models/
-│ └── ...
-├── frontend/
-│ └── dashboard/ # Application React
-└── .gitignore
-
 
 ## ⚙️ Technologies utilisées
 

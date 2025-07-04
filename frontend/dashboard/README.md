@@ -18,13 +18,14 @@ npm start
 │
 ├── components
 │   └── Sidebar.js
-│   └── Topbar.js (facultatif si nécessaire)
+│   └── Topbar.js 
 │
 ├── pages
 │   └── CommentCaMarche.js
 │   └── ImporterDonnees.js
 │   └── Historique.js
 │   └── MonCompte.js
+    └── ...etc
 │
 └── layouts
     └── DashboardUserLayout.js
