@@ -357,16 +357,17 @@ def delete_type_projet(id_type_projet):
 
 
 
-
-#Envoyer les données dans nos tables présentes dans postgresql
 @auth_bp.route("/import_excel", methods=["POST"])
 @login_required
 def import_excel():
+    conn = None
     try:
         if 'file' not in request.files:
             return jsonify({"error": "Aucun fichier fourni"}), 400
 
         file = request.files['file']
+        nom_fichier = file.filename if file else None
+
         df = pd.read_excel(file)
         df = df.replace({np.nan: None})
 
@@ -397,6 +398,7 @@ def import_excel():
             return jsonify({"error": "Connexion à la base impossible."}), 500
 
         with conn.cursor() as cur:
+            # Vider table temporaire
             cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
 
             for _, row in df.iterrows():
@@ -441,7 +443,7 @@ def import_excel():
                     ON CONFLICT (nom_filiere) DO NOTHING
                 """, (row_dict["filiere"], row_dict["maillon_type_credit"]))
 
-                # Liens vers promoteur, psf, filière, commune
+                # Récupérer les ids liés
                 cur.execute("SELECT id_promoteur FROM promoteur WHERE nom_promoteur = %s AND nom_entite = %s",
                             (row_dict["nom_promoteur"], row_dict["denomination_entite"]))
                 id_promoteur = cur.fetchone()
@@ -499,19 +501,49 @@ def import_excel():
                     "created_by": created_by
                 })
 
+            # Commit des données principales
+            conn.commit()
+
+            # Insérer l'historique d'importation en succès
+            cur.execute("""
+                INSERT INTO historique_importation (
+                    nom_fichier, id_type_projet, utilisateur, statut
+                ) VALUES (%s, %s, %s, %s)
+            """, (nom_fichier, id_type_projet, created_by, True))
+
             conn.commit()
 
         session.pop('id_type_projet', None)
         return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
 
     except Exception as e:
-        if 'conn' in locals() and conn:
+        if conn:
             conn.rollback()
+        try:
+            # Enregistrement dans historique d'import en cas d'erreur
+          with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO historique_importation (
+                        nom_fichier, id_type_projet, utilisateur, statut
+                    ) VALUES (%s, %s, %s, %s)
+                """, (
+                    nom_fichier if 'nom_fichier' in locals() else None,
+                    id_type_projet if 'id_type_projet' in locals() else None,
+                    created_by if 'created_by' in locals() else None,
+                    False
+                ))
+                conn.commit()
+
+        except:
+            # On ignore l'erreur ici pour ne pas masquer l'originale
+            pass
+
         return jsonify({"error": str(e)}), 500
 
     finally:
-        if 'conn' in locals() and conn:
+        if conn:
             conn.close()
+
 
 
 
@@ -794,6 +826,33 @@ def get_projets_par_facilite(id_type_projet):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+    finally:
+        if conn:
+            conn.close()
+
+# Gestion et affichage de l'historique 
+
+@auth_bp.route('/history', methods=['GET'])
+@login_required
+def import_excel_history():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, nom_fichier, id_type_projet, utilisateur, date_import, statut
+                FROM historique_importation
+                ORDER BY date_import DESC
+                LIMIT 100
+            """)
+            rows = cur.fetchall()
+            columns = [desc[0] for desc in cur.description]
+            data = [dict(zip(columns, row)) for row in rows]
+
+        return jsonify(data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     finally:
         if conn:
