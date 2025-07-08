@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FiUpload, FiEye, FiEdit, FiDatabase } from 'react-icons/fi';
@@ -31,9 +31,40 @@ function CommentCaMarche() {
     },
   ];
 
+  // État pour les facilités récupérées depuis le backend
+  const [facilites, setFacilites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Chargement des facilités avec fetch
+  useEffect(() => {
+    const fetchFacilites = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/auth/types_projets', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // utile si tu utilises Flask-Login avec sessions
+        });
+
+        if (!response.ok) throw new Error('Erreur lors de la récupération des facilités');
+
+        const data = await response.json();
+        setFacilites(data);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        setFacilites([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFacilites();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white px-4 py-12 md:px-16">
-      {/* En-tête */}
+      {/* Titre principal */}
       <div className="text-center max-w-3xl mx-auto mb-16">
         <h1 className="text-4xl md:text-5xl font-bold text-green-700 mb-4">
           Comment ça marche ?
@@ -54,41 +85,35 @@ function CommentCaMarche() {
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.6, delay: index * 0.1 }}
           >
-            {/* Badge numéro */}
             <div className="absolute -left-6 top-6 w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">
               {index + 1}
             </div>
 
-            {/* Icône flottante */}
             <div className="mb-4 flex items-center justify-center w-14 h-14 rounded-full bg-green-600 shadow-lg">
               {step.icon}
             </div>
 
-            {/* Titre + description */}
             <h3 className="text-xl font-semibold text-green-800 mb-2">{step.title}</h3>
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base">{step.description}</p>
           </motion.div>
         ))}
       </div>
 
-      {/* Blocs infos + bouton final */}
+      {/* Infos supplémentaires et bouton */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="max-w-4xl mx-auto space-y-10 mt-16"
       >
-        {/* Bloc : Nomenclature */}
+        {/* Nomenclature */}
         <section className="bg-green-50 border-l-4 border-green-700 p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-bold text-green-800 mb-3 flex items-center gap-2">
-            <span role="img" aria-label="dossier">
-              🗂️
-            </span>{' '}
-            Nomenclature du fichier attendu
+            🗂️ Nomenclature du fichier attendu
           </h2>
           <p className="text-gray-700 text-base leading-relaxed mb-4">
-            Avant l’importation, veuillez vous assurer que votre fichier Excel respecte le modèle défini. Vous
-            pouvez télécharger un exemple de fichier correctement structuré ci-dessous pour éviter toute erreur.
+            Avant l’importation, veuillez vous assurer que votre fichier Excel respecte le modèle défini.
+            Vous pouvez télécharger un exemple de fichier correctement structuré ci-dessous pour éviter toute erreur.
           </p>
           <a
             href="/assets/Nomenclature.xlsx"
@@ -99,22 +124,25 @@ function CommentCaMarche() {
           </a>
         </section>
 
-        {/* Bloc : Facilités */}
+        {/* Facilités disponibles */}
         <section className="bg-blue-50 border-l-4 border-blue-700 p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-bold text-blue-800 mb-3 flex items-center gap-2">
-            <span role="img" aria-label="ampoule">
-              💡
-            </span>{' '}
-            Facilités disponibles
+            💡 Facilités disponibles
           </h2>
-          <p className="text-gray-700 text-base leading-relaxed">
-            À ce jour, la plateforme prend en charge les importations de projets liés aux facilités suivantes :{' '}
-            <strong>GARANTIE, FIER, FNDA, FACIL</strong>. Chaque facilité est liée à un ensemble spécifique de règles
-            de gestion et de financement, sélectionnez donc celle qui correspond à votre besoin avant de commencer.
-          </p>
+
+          {loading && <p className="text-gray-600 italic">Chargement des facilités...</p>}
+          {error && <p className="text-red-600 font-semibold">{error}</p>}
+          {!loading && !error && facilites.length > 0 && (
+            <p className="text-gray-700 text-base leading-relaxed">
+              À ce jour, la plateforme prend en charge les importations de projets liés aux facilités suivantes :{' '}
+              <strong>
+                {facilites.map((f) => f.nom_facilite.toUpperCase()).join(', ')}
+              </strong>. Chaque facilité est liée à un ensemble spécifique de règles de gestion et de financement.
+            </p>
+          )}
         </section>
 
-        {/* Bouton final */}
+        {/* Bouton Commencer */}
         <div className="text-center">
           <Link
             to="/dashboard/importer"
