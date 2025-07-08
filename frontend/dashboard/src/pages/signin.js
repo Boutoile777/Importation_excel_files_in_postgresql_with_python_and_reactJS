@@ -134,7 +134,7 @@ export default function SignIn() {
         </form>
 
         <p className="mt-4 text-center">
-          <Link to="/forgotpassword" className="text-emerald-600 hover:underline">
+          <Link to="/forgotpasseword" className="text-emerald-600 hover:underline">
             Mot de passe oublié ?
           </Link>
         </p>
