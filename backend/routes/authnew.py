@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from db import get_connection
 from utils.password import hash_password, check_password
@@ -10,6 +10,8 @@ from psycopg2.errors import UniqueViolation
 from functools import wraps
 import jwt
 import datetime
+from itsdangerous import URLSafeTimedSerializer
+
 
 # --- Initialisation Flask-Login ---
 login_manager = LoginManager()
@@ -210,7 +212,53 @@ def update_current_user():
         conn.close()
 
 
+# -----------------------------
+# Route de gestion de mot de passe oublié
+# -----------------------------
 
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        data = request.json
+        email = data.get('email')
+
+        if not email:
+            return jsonify({'error': 'Email requis.'}), 400
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM utilisateur WHERE email = %s", (email,))
+            user = cur.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Aucun utilisateur trouvé avec cet email.'}), 404
+
+        # Utilise current_app.secret_key ici
+        serializer = URLSafeTimedSerializer(current_app.secret_key)
+        token = serializer.dumps(email, salt='reset-password')
+
+        reset_url = f"http://localhost:3000/reset-password/{token}"
+
+        return jsonify({
+            'message': 'Lien de réinitialisation généré.',
+            'reset_url': reset_url
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+# -----------------------------
+# Route d'insertion des facilités
+# -----------------------------
 
 @auth_bp.route('/type_projets', methods=['GET'])
 @login_required
