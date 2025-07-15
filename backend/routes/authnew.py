@@ -10,7 +10,15 @@ from psycopg2.errors import UniqueViolation
 from functools import wraps
 import jwt
 import datetime
-from itsdangerous import URLSafeTimedSerializer
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+
+from flask_mail import Message
+from extensions import mail  
+
+
+
+
+
 
 
 # --- Initialisation Flask-Login ---
@@ -236,16 +244,73 @@ def forgot_password():
         if not user:
             return jsonify({'error': 'Aucun utilisateur trouvé avec cet email.'}), 404
 
-        # Utilise current_app.secret_key ici
         serializer = URLSafeTimedSerializer(current_app.secret_key)
         token = serializer.dumps(email, salt='reset-password')
-
         reset_url = f"http://localhost:3000/reset-password/{token}"
 
-        return jsonify({
-            'message': 'Lien de réinitialisation généré.',
-            'reset_url': reset_url
-        }), 200
+        # Construire le mail
+        subject = "Réinitialisation de votre mot de passe"
+        body = f"""
+Bonjour,
+
+Vous avez demandé à réinitialiser votre mot de passe.
+Cliquez sur ce lien pour le faire : {reset_url}
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.
+
+Cordialement,
+L'équipe
+        """
+
+        msg = Message(subject=subject, recipients=[email], body=body)
+
+        # Envoi du mail
+        mail.send(msg)
+
+        return jsonify({'message': 'Email de réinitialisation envoyé.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+#Route pour Mettre à jour les informations de l'user concernant les mots de passe 
+
+
+@auth_bp.route('/reset-password/<token>', methods=['POST'])
+def reset_password(token):
+    try:
+        data = request.json
+        new_password = data.get('new_password')
+
+        if not new_password:
+            return jsonify({'error': 'Nouveau mot de passe requis.'}), 400
+
+        serializer = URLSafeTimedSerializer(current_app.secret_key)
+
+        try:
+            email = serializer.loads(token, salt='reset-password', max_age=3600)
+        except SignatureExpired:
+            return jsonify({'error': 'Le lien a expiré.'}), 400
+        except BadSignature:
+            return jsonify({'error': 'Lien invalide.'}), 400
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            hashed = hash_password(new_password)  # ✅ hash via password.py
+
+            cur.execute(
+                "UPDATE utilisateur SET mot_de_passe = %s WHERE email = %s",
+                (hashed, email)
+            )
+            conn.commit()
+
+        return jsonify({'message': 'Mot de passe mis à jour avec succès.'}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -16,6 +16,7 @@ import Facilite from './pages/Facilite';
 import Ex from './pages/Ex';
 import ProjetsParFacilite from './pages/ProjetsParFacilite';
 import ToutesOperationsPage from './pages/ToutesOperationsPage';
+import ResetPassword from './pages/ResetPassword';
  // 🆕 Import ajouté
 
 // Composant pour protéger les routes privées
@@ -36,6 +37,7 @@ function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgotpasseword" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Routes privées dans le layout Dashboard */}
           <Route element={<PrivateRoute element={<DashboardUserLayout />} />}>
@@ -48,6 +50,8 @@ function App() {
             <Route path="/dashboard/mon-compte" element={<MonCompte />} />
             <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
             <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
+            
+
 
  {/* 🆕 Route ajoutée */}
           </Route>
