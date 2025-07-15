@@ -291,7 +291,7 @@ def reset_password(token):
         serializer = URLSafeTimedSerializer(current_app.secret_key)
 
         try:
-            email = serializer.loads(token, salt='reset-password', max_age=3600)
+            email = serializer.loads(token, salt='reset-password', max_age=100)
         except SignatureExpired:
             return jsonify({'error': 'Le lien a expiré.'}), 400
         except BadSignature:

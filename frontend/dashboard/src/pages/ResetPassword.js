@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import logo from '../assets/logo.png'; // adapte ce chemin si besoin
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import logo from '../assets/logo.png';
 
 export default function ResetPassword() {
   const { token } = useParams();
+  const navigate = useNavigate();
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageColor, setMessageColor] = useState('text-red-600');
   const [loading, setLoading] = useState(false);
+
+  const isPasswordStrong = (password) => {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    return regex.test(password);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,6 +33,12 @@ export default function ResetPassword() {
     if (newPassword !== confirmPassword) {
       setMessageColor('text-red-600');
       setMessage('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    if (!isPasswordStrong(newPassword)) {
+      setMessageColor('text-red-600');
+      setMessage('Mot de passe trop faible : min. 8 caractères, avec majuscule, minuscule, chiffre et symbole.');
       return;
     }
 
@@ -44,7 +60,13 @@ export default function ResetPassword() {
         setConfirmPassword('');
       } else {
         setMessageColor('text-red-600');
-        setMessage(result.error || 'Une erreur est survenue.');
+        if (result.error?.includes('expiré')) {
+          setMessage('Le lien de réinitialisation a expiré. Veuillez en redemander un.');
+        } else if (result.error?.includes('invalide')) {
+          setMessage("Lien de réinitialisation invalide.");
+        } else {
+          setMessage(result.error || 'Une erreur est survenue.');
+        }
       }
     } catch (err) {
       setMessageColor('text-red-600');
@@ -53,6 +75,15 @@ export default function ResetPassword() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (messageColor === 'text-green-600') {
+      const timer = setTimeout(() => {
+        navigate('/signin');
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [messageColor, navigate]);
 
   return (
     <div className="bg-gray-200 flex items-center justify-center min-h-screen px-4">
@@ -64,26 +95,46 @@ export default function ResetPassword() {
         <h1 className="text-xl font-semibold mb-6 text-center">Nouveau mot de passe</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Nouveau mot de passe */}
           <div>
             <label className="block text-gray-700">Nouveau mot de passe</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
+          {/* Confirmation */}
           <div>
             <label className="block text-gray-700">Confirmer le mot de passe</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           <button
@@ -95,7 +146,19 @@ export default function ResetPassword() {
           </button>
         </form>
 
-        {message && <p className={`mt-4 text-center font-semibold ${messageColor}`}>{message}</p>}
+        {message && (
+          <p className={`mt-4 text-center font-semibold ${messageColor}`}>{message}</p>
+        )}
+
+        {messageColor === 'text-green-600' && (
+          <p className="mt-4 text-center">
+            Redirection vers la page de connexion...
+            <br />
+            <Link to="/signin" className="text-emerald-600 hover:underline">
+              Aller à la connexion maintenant
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );
