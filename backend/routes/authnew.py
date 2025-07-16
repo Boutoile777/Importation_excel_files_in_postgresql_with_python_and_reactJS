@@ -67,7 +67,6 @@ def load_user(user_id):
 # Route d'enregistrement d'un nouvel user
 # -----------------------------
 
-
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     try:
@@ -92,9 +91,9 @@ def signup():
             if cur.fetchone():
                 return jsonify({'error': 'Utilisateur déjà inscrit.'}), 400
 
-            # Insère le nouvel utilisateur
+            # Insère le nouvel utilisateur avec mot_de_passe_temporaire = TRUE
             cur.execute(
-                "INSERT INTO utilisateur (nom, prenom, email, mot_de_passe) VALUES (%s, %s, %s, %s) RETURNING id",
+                "INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, mot_de_passe_temporaire) VALUES (%s, %s, %s, %s, TRUE) RETURNING id",
                 (nom, prenom, email, hashed)
             )
             user_id = cur.fetchone()[0]
@@ -109,11 +108,55 @@ def signup():
         if 'conn' in locals() and conn:
             conn.close()
 
+# @auth_bp.route('/signup', methods=['POST'])
+# def signup():
+#     try:
+#         data = request.json
+#         nom = data.get('nom')
+#         prenom = data.get('prenom')
+#         email = data.get('email')
+#         mot_de_passe = data.get('mot_de_passe')
+
+#         if not all([nom, prenom, email, mot_de_passe]):
+#             return jsonify({'error': 'Tous les champs sont requis.'}), 400
+
+#         hashed = hash_password(mot_de_passe)
+
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+#         with conn.cursor() as cur:
+#             # Vérifie que l'email n'est pas déjà pris
+#             cur.execute("SELECT id FROM utilisateur WHERE email = %s", (email,))
+#             if cur.fetchone():
+#                 return jsonify({'error': 'Utilisateur déjà inscrit.'}), 400
+
+#             # Insère le nouvel utilisateur avec mot_de_passe_temporaire = TRUE
+#             cur.execute(
+#                 """
+#                 INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, mot_de_passe_temporaire)
+#                 VALUES (%s, %s, %s, %s, TRUE) RETURNING id
+#                 """,
+#                 (nom, prenom, email, hashed)
+#             )
+#             user_id = cur.fetchone()[0]
+#             conn.commit()
+
+#         return jsonify({'message': 'Inscription réussie.', 'user_id': user_id}), 201
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+#     finally:
+#         if 'conn' in locals() and conn:
+#             conn.close()
 
 
- # -----------------------------
-# Route de connexion
-# -----------------------------
+
+#  # -----------------------------
+# # Route de connexion
+# # -----------------------------
 @auth_bp.route('/signin', methods=['POST'])
 def signin():
     try:
@@ -129,18 +172,21 @@ def signin():
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            cur.execute("SELECT id, mot_de_passe, nom, prenom, admin FROM utilisateur WHERE email = %s", (email,))
+            cur.execute("""
+                SELECT id, mot_de_passe, nom, prenom, admin, mot_de_passe_temporaire 
+                FROM utilisateur WHERE email = %s
+            """, (email,))
             user = cur.fetchone()
 
         if not user:
             return jsonify({'error': 'Utilisateur non trouvé.'}), 404
 
-        user_id, hashed_password, nom, prenom, admin = user
+        user_id, hashed_password, nom, prenom, admin, mot_temp = user
         if not check_password(mot_de_passe, hashed_password):
             return jsonify({'error': 'Mot de passe incorrect.'}), 401
 
         user_obj = Utilisateur(user_id, nom, prenom, email, admin)
-        login_user(user_obj)  # ✅ Connecte l'utilisateur avec Flask-Login
+        login_user(user_obj)
 
         return jsonify({
             'message': 'Connexion réussie.',
@@ -149,9 +195,9 @@ def signin():
                 'nom': nom,
                 'prenom': prenom,
                 'email': email,
-                'admin': admin
+                'admin': admin,
+                'mot_de_passe_temporaire': mot_temp  # ✅ Ajout essentiel ici
             }
-            
         }), 200
 
     except Exception as e:
@@ -160,6 +206,7 @@ def signin():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
 
 
 # -----------------------------
@@ -218,6 +265,48 @@ def update_current_user():
         return jsonify({'message': 'Profil mis à jour avec succès.'}), 200
     finally:
         conn.close()
+
+
+# Mofification du mot de passe à la première connexion
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    try:
+        data = request.json
+        new_password = data.get('new_password')
+
+        if not new_password:
+            return jsonify({'error': 'Nouveau mot de passe requis.'}), 400
+
+        # Hash du nouveau mot de passe
+        hashed = hash_password(new_password)
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            # Mise à jour mot de passe + reset flag
+            cur.execute(
+                """
+                UPDATE utilisateur
+                SET mot_de_passe = %s, force_password_change = false
+                WHERE id = %s
+                """,
+                (hashed, current_user.id)
+            )
+            conn.commit()
+
+        return jsonify({'message': 'Mot de passe changé avec succès.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
 
 
 # -----------------------------
