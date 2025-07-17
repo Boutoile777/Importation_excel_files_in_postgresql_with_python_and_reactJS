@@ -34,7 +34,7 @@ const customStyles = {
 
 
 const colonnes = [
-  { name: 'Date Comité', selector: row => row.date_comite_validation, sortable: true, minWidth: '150px' },
+  { name: 'Date Comité', selector: row => row.date_comite_validation, sortable: true, minWidth: '180px' },
   { name: 'Intitulé Projet', selector: row => row.intitule_projet, sortable: true, minWidth: '250px', wrap: true },
   { name: 'Coût Total', selector: row => row.cout_total_projet ? Number(row.cout_total_projet).toLocaleString() : '', sortable: true, minWidth: '140px' },
   { name: 'Crédit Solicité', selector: row => row.credit_solicite ? Number(row.credit_solicite).toLocaleString() : '', sortable: true, minWidth: '140px' },
@@ -48,8 +48,8 @@ const colonnes = [
   { name: 'Statut Dossier', selector: row => row.statut_dossier, sortable: true, minWidth: '150px' },
   { name: 'Crédit Accordé Statut', selector: row => row.credit_accorde_statut, sortable: true, minWidth: '170px' },
   { name: 'Type projet', selector: row => row.nom_type_projet, sortable: true, minWidth: '150px' },
-  { name: 'Créé le', selector: row => row.created_at, sortable: true, minWidth: '170px' },
-  { name: 'Créé par', selector: row => row.created_by, sortable: true, minWidth: '150px' },
+  { name: 'Créé le', selector: row => row.created_at, sortable: true, minWidth: '190px' },
+  { name: 'Créé par', selector: row => row.created_by, sortable: true, minWidth: '220px' },
 ];
 
 function ProjetsFinancementTable() {

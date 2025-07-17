@@ -69,7 +69,7 @@ function App() {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Route pour forcer le changement de mot de passe */}
-          <Route path="/force-change-password" element={<ForceChangePasswordRoute />} />
+          <Route path="/force-change-password" element={<ForceChangePassword />} />
 
           {/* Routes privées dans le layout Dashboard */}
           <Route element={<PrivateRoute />}>

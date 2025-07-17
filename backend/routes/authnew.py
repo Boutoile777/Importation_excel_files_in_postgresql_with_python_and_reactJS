@@ -108,51 +108,6 @@ def signup():
         if 'conn' in locals() and conn:
             conn.close()
 
-# @auth_bp.route('/signup', methods=['POST'])
-# def signup():
-#     try:
-#         data = request.json
-#         nom = data.get('nom')
-#         prenom = data.get('prenom')
-#         email = data.get('email')
-#         mot_de_passe = data.get('mot_de_passe')
-
-#         if not all([nom, prenom, email, mot_de_passe]):
-#             return jsonify({'error': 'Tous les champs sont requis.'}), 400
-
-#         hashed = hash_password(mot_de_passe)
-
-#         conn = get_connection()
-#         if conn is None:
-#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
-
-#         with conn.cursor() as cur:
-#             # Vérifie que l'email n'est pas déjà pris
-#             cur.execute("SELECT id FROM utilisateur WHERE email = %s", (email,))
-#             if cur.fetchone():
-#                 return jsonify({'error': 'Utilisateur déjà inscrit.'}), 400
-
-#             # Insère le nouvel utilisateur avec mot_de_passe_temporaire = TRUE
-#             cur.execute(
-#                 """
-#                 INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, mot_de_passe_temporaire)
-#                 VALUES (%s, %s, %s, %s, TRUE) RETURNING id
-#                 """,
-#                 (nom, prenom, email, hashed)
-#             )
-#             user_id = cur.fetchone()[0]
-#             conn.commit()
-
-#         return jsonify({'message': 'Inscription réussie.', 'user_id': user_id}), 201
-
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
-
-#     finally:
-#         if 'conn' in locals() and conn:
-#             conn.close()
-
-
 
 #  # -----------------------------
 # # Route de connexion

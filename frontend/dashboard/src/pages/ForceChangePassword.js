@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import logo from '../assets/logo.png'; // adapte selon ton chemin
+import logo from '../assets/logo.png';
 
 export default function ForceChangePassword() {
+  const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
@@ -18,7 +21,7 @@ export default function ForceChangePassword() {
     e.preventDefault();
     setMessage('');
 
-    if (!newPassword || !confirmPassword) {
+    if (!email || !currentPassword || !newPassword || !confirmPassword) {
       setMessageColor('text-red-600');
       setMessage('Tous les champs sont requis.');
       return;
@@ -35,19 +38,20 @@ export default function ForceChangePassword() {
     try {
       const response = await fetch('http://localhost:5000/auth/change-password', {
         method: 'POST',
-        credentials: 'include', // si tu utilises les cookies de session
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ new_password: newPassword }),
+        body: JSON.stringify({
+          email,
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
         setMessageColor('text-green-600');
-        setMessage(result.message || 'Mot de passe changé avec succès. Vous pouvez maintenant vous connecter.');
-        setNewPassword('');
-        setConfirmPassword('');
-        // Après un délai, redirige vers signin
+        setMessage(result.message || 'Mot de passe changé avec succès.');
         setTimeout(() => navigate('/signin'), 3000);
       } else {
         setMessageColor('text-red-600');
@@ -69,10 +73,44 @@ export default function ForceChangePassword() {
         </div>
 
         <h1 className="text-xl font-semibold mb-6 text-center">
-          Changement obligatoire du mot de passe
+          Définir un mot de passe
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <div>
+            <label className="block text-gray-700">Adresse email</label>
+            <input
+              type="email"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700">Mot de passe actuel</label>
+            <div className="relative">
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                disabled={loading}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                tabIndex={-1}
+              >
+                {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-gray-700">Nouveau mot de passe</label>
             <div className="relative">
@@ -82,7 +120,6 @@ export default function ForceChangePassword() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 disabled={loading}
-                autoFocus
               />
               <button
                 type="button"

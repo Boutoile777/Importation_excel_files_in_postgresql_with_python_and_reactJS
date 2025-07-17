@@ -40,18 +40,23 @@ export default function SignIn() {
         throw new Error("Réponse invalide du serveur (non JSON).");
       }
 
-      if (response.ok) {
+            if (response.ok) {
         setMessageColor('text-green-600');
         setMessage('Connexion réussie !');
-        // Ici on passe bien les données utilisateur reçues à login
         login(result.user);
+
         setTimeout(() => {
-          navigate('/dashboard');
+          if (result.user.mot_de_passe_temporaire) {
+            navigate('/force-change-password');  // rediriger vers la bonne page
+          } else {
+            navigate('/dashboard');  // rediriger normalement
+          }
         }, 1000);
-      } else {
-        setMessageColor('text-red-600');
-        setMessage(result.error || 'Erreur lors de la connexion.');
       }
+        else {
+                setMessageColor('text-red-600');
+                setMessage(result.error || 'Erreur lors de la connexion.');
+              }
     } catch (err) {
       console.error("Erreur dans le fetch:", err);
       setMessageColor('text-red-600');
