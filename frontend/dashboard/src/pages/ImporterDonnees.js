@@ -12,6 +12,7 @@ function Importation() {
   // États de la 2nde partie (import Excel)
   const [file, setFile] = useState(null);
   const [data, setData] = useState([]);
+  const [originalData, setOriginalData] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [editFinished, setEditFinished] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,26 +56,48 @@ function Importation() {
     }
   };
 
-  // Partie import Excel
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    setEditFinished(false);
-    setEditMode(false);
-    setCurrentPage(1);
-    setImportStatus(null);
+// Partie import Excel
+const handleFileChange = (e) => {
+  const selectedFile = e.target.files[0];
+  if (!selectedFile) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      setData(jsonData);
-    };
-    reader.readAsBinaryString(selectedFile);
+  setFile(selectedFile);
+  setEditFinished(false);
+  setEditMode(false);
+  setCurrentPage(1);
+  setImportStatus(null);
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const bstr = evt.target.result;
+    const wb = XLSX.read(bstr, { type: 'binary' });
+    const wsname = wb.SheetNames[0];
+    const ws = wb.Sheets[wsname];
+
+    const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    setData(jsonData);
+   setOriginalData(JSON.parse(JSON.stringify(jsonData))); // garde une copie originale
   };
+  reader.readAsBinaryString(selectedFile);
+};
+
+// Bouton "Valider les modifications"
+const handleValidateEdit = () => {
+  setOriginalData(JSON.parse(JSON.stringify(data))); // ⬅️ On enregistre les nouvelles données comme officielles
+  setEditMode(false);
+  setEditFinished(true); // ⬅️ Active le bouton d’importation
+};
+
+
+// Bouton "Annuler les modifications"
+const handleCancelEdit = () => {
+  setData(JSON.parse(JSON.stringify(originalData))); // restaure proprement
+  setEditMode(false);
+  setEditFinished(false);
+};
+
+
 
   const handleEdit = () => {
     setEditMode(true);
@@ -120,6 +143,8 @@ function Importation() {
       setImportStatus({ success: false, message: error.message || 'Erreur lors de l\'importation.' });
     }
   };
+
+  
 
   const totalPages = Math.ceil(data.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -291,13 +316,22 @@ function Importation() {
                   )}
 
                   {editMode && (
-                    <button
-                      onClick={handleFinishEdit}
-                      className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded flex items-center gap-2"
-                    >
-                      <FiCheckCircle /> Terminer la modification
-                    </button>
+                    <>
+                      <button
+                        onClick={handleValidateEdit}
+                        className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded flex items-center gap-2"
+                      >
+                        <FiCheckCircle /> Valider les modifications
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded flex items-center gap-2"
+                      >
+                        Annuler
+                      </button>
+                    </>
                   )}
+
                 </div>
 
                 {importStatus && (
