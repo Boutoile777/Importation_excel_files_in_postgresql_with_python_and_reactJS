@@ -114,35 +114,39 @@ const handleCancelEdit = () => {
     newData[rowIndex][colIndex] = value;
     setData(newData);
   };
+const handleImportToDB = async () => {
+  if (!data || data.length === 0) {
+    setImportStatus({ success: false, message: 'Aucune donnée à importer.' });
+    return;
+  }
 
-  const handleImportToDB = async () => {
-    if (!file) {
-      setImportStatus({ success: false, message: 'Veuillez sélectionner un fichier avant d\'importer.' });
-      return;
+  try {
+    const response = await fetch('http://localhost:5000/auth/import_excel', {
+      credentials: "include",
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: data,  // ✅ Les données du tableau (modifiées ou non)
+        type_facilite: selectedFacilite || null, // facultatif
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Erreur inconnue.');
     }
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type_facilite', selectedFacilite);  // Envoi de l’info au backend si besoin
+    setImportStatus({ success: true, message: result.message || 'Importation réussie !' });
+    setEditFinished(false);
+    setOriginalData(data);
+  } catch (error) {
+    setImportStatus({ success: false, message: error.message });
+  }
+};
 
-      const response = await fetch('http://localhost:5000/auth/import_excel', {
-        credentials: "include",
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erreur serveur : ${errorText}`);
-      }
-
-      const result = await response.json();
-      setImportStatus({ success: true, message: result.message || 'Importation réussie !' });
-    } catch (error) {
-      setImportStatus({ success: false, message: error.message || 'Erreur lors de l\'importation.' });
-    }
-  };
 
   
 
@@ -297,42 +301,42 @@ const handleCancelEdit = () => {
                   </div>
                 )}
 
-                <div className="flex flex-wrap justify-center gap-4 mt-6">
-                  {!editMode && !editFinished && (
-                    <>
-                      <button
-                        onClick={handleEdit}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2 rounded flex items-center gap-2"
-                      >
-                        <FiEdit /> Modifier
-                      </button>
-                      <button
-                        onClick={handleImportToDB}
-                        className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded flex items-center gap-2"
-                      >
-                        <FiDatabase /> Importer dans la base
-                      </button>
-                    </>
-                  )}
+                  <div className="flex flex-wrap justify-center gap-4 mt-6">
+                    {!editMode && (
+                      <>
+                        <button
+                          onClick={handleEdit}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2 rounded flex items-center gap-2"
+                        >
+                          <FiEdit /> Modifier
+                        </button>
+                        <button
+                          onClick={handleImportToDB}
+                          className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded flex items-center gap-2"
+                        >
+                          <FiDatabase /> Importer dans la base
+                        </button>
+                      </>
+                    )}
 
-                  {editMode && (
-                    <>
-                      <button
-                        onClick={handleValidateEdit}
-                        className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded flex items-center gap-2"
-                      >
-                        <FiCheckCircle /> Valider les modifications
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded flex items-center gap-2"
-                      >
-                        Annuler
-                      </button>
-                    </>
-                  )}
+                    {editMode && (
+                      <>
+                        <button
+                          onClick={handleValidateEdit}
+                          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded flex items-center gap-2"
+                        >
+                          <FiCheckCircle /> Valider les modifications
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded flex items-center gap-2"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-                </div>
 
                 {importStatus && (
                   <p
