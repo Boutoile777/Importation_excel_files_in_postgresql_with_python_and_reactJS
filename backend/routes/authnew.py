@@ -247,7 +247,8 @@ def change_password():
             cur.execute(
                 """
                 UPDATE utilisateur
-                SET mot_de_passe = %s, force_password_change = false
+                SET mot_de_passe = %s,
+                mot_de_passe_temporaire = false
                 WHERE id = %s
                 """,
                 (hashed, current_user.id)
