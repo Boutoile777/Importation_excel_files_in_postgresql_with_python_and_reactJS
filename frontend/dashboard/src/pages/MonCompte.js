@@ -18,11 +18,13 @@ function MonCompte() {
         const response = await fetch('http://localhost:5000/auth/me', {
           method: 'GET',
           credentials: 'include'
+          
         });
         const data = await response.json();
         if (response.ok) {
           setUser(data);
           setTempValues(data);
+          // setPhotoProfil(data.photo_profil);  // 👈 important
         } else {
           console.error('Utilisateur non connecté :', data.error);
         }
@@ -70,23 +72,43 @@ function MonCompte() {
     }
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedAvatar(file);
-      setPreview(URL.createObjectURL(file));
+ const handleAvatarChange = async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setPreview(URL.createObjectURL(file));
+    setSelectedAvatar(file); // Ajouté
+
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      const response = await fetch(`${baseUrl}/auth/me/avatar`, {
+        method: 'PATCH',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) throw new Error("Erreur lors de l'envoi de l'avatar");
+
+      const data = await response.json();
+      setUser((prev) => ({ ...prev, avatar: data.avatar }));
+    } catch (error) {
+      console.error("Erreur lors de l'upload d'avatar :", error);
     }
-  };
+  }
+};
 
   const handleUploadAvatar = async () => {
     if (!selectedAvatar) return;
 
     const formData = new FormData();
-    formData.append('avatar', selectedAvatar);
+  formData.append('photo', selectedAvatar);  // clé 'photo' au lieu de 'avatar'
+
 
     try {
-      const response = await fetch('http://localhost:5000/auth/avatar', {
-        method: 'POST',
+      const response = await fetch('http://localhost:5000/auth/me/avatar', {
+        method: 'PATCH',
         credentials: 'include',
         body: formData
       });
@@ -94,7 +116,7 @@ function MonCompte() {
       if (!response.ok) throw new Error('Échec de l\'upload.');
 
       const data = await response.json();
-      setUser((prev) => ({ ...prev, avatar: data.avatar }));
+      setUser((prev) => ({ ...prev, photo_profil: data.photo_profil }));
       setPreview(null);
       setSelectedAvatar(null);
       setSuccessMessage('✅ Photo de profil mise à jour !');
@@ -153,26 +175,42 @@ function MonCompte() {
         {/* Avatar dynamique ou initiales */}
                   
           <div className="flex flex-col items-center gap-4">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-green-200 shadow-md flex items-center justify-center relative">
-              {preview ? (
-                <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
-              ) : user.avatar ? (
-                <img src={user.avatar} alt="Avatar utilisateur" className="object-cover w-full h-full" />
-              ) : (
-                <span className="text-3xl font-bold text-green-700">
-                  {(user.prenom?.[0] || '') + (user.nom?.[0] || '')}
-                </span>
-              )}
-              <label className="absolute bottom-2 right-2 bg-white p-1 rounded-full shadow cursor-pointer">
-                <FiCamera size={20} />
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-green-200 shadow-md flex items-center justify-center relative cursor-pointer">
+                {/* Avatar ou initiales */}
+                {preview ? (
+                  <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
+                ) : user.photo_profil ? (
+                  <img
+                    src={`http://localhost:5000/uploads/profils/${user.photo_profil}`}
+                    alt=""
+                    className="object-cover w-full h-full"
+                  />
+                ) : (
+                  <span className="text-6xl font-bold text-green-700">
+                    {(user.prenom?.[0] || '') + (user.nom?.[0] || '')}
+                  </span>
+                )}
+
+
+                {/* Overlay avec l’icône appareil photo */}
+                <label
+                  htmlFor="avatarUpload"
+                  className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity rounded-full text-white"
+                  title="Changer la photo"
+                >
+                  <FiCamera size={36} />
+                </label>
+
+                {/* Input caché */}
                 <input
+                  id="avatarUpload"
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={handleAvatarChange}
                 />
-              </label>
             </div>
+
 
             {/* Actions si un fichier est sélectionné */}
             {selectedAvatar && (
