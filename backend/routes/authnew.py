@@ -16,6 +16,17 @@ from flask_mail import Message
 from extensions import mail  
 
 
+import os
+from werkzeug.utils import secure_filename
+
+#Stockage des images de profil 
+
+UPLOAD_FOLDER = 'uploads/profils'  # Chemin local pour stocker les images
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 
 
@@ -32,12 +43,13 @@ auth_bp = Blueprint('auth', __name__)
 # -----------------------------
 
 class Utilisateur(UserMixin):
-    def __init__(self, id, nom, prenom, email, admin):
+    def __init__(self, id, nom, prenom, email, admin, photo_profil=None):
         self.id = id
         self.nom = nom
         self.prenom = prenom
         self.email = email
         self.admin = admin
+        self.photo_profil = photo_profil
 
     @staticmethod
     def get(user_id):
@@ -46,7 +58,7 @@ class Utilisateur(UserMixin):
             return None
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT id, nom, prenom, email, admin FROM utilisateur WHERE id = %s", (user_id,))
+                cur.execute("SELECT id, nom, prenom, email, admin, photo_profil FROM utilisateur WHERE id = %s", (user_id,))
                 user = cur.fetchone()
                 if user:
                     return Utilisateur(*user)
@@ -185,8 +197,10 @@ def get_current_user():
         'nom': current_user.nom,
         'prenom': current_user.prenom,
         'email': current_user.email,
-        'admin': current_user.admin
-    }), 200  # ✅ code HTTP corrigé
+        'admin': current_user.admin,
+        'photo_profil': current_user.photo_profil
+    }), 200
+
 
 # -----------------------------
 # Mise à jour du profil utilisateur connecté
@@ -220,6 +234,51 @@ def update_current_user():
         return jsonify({'message': 'Profil mis à jour avec succès.'}), 200
     finally:
         conn.close()
+
+
+#Route de gestion de la photo de profil 
+
+@auth_bp.route('/me/avatar', methods=['PATCH'])
+@login_required
+def update_photo():
+    if 'photo' not in request.files:
+        return jsonify({'error': 'Aucun fichier reçu.'}), 400
+
+    file = request.files['photo']
+    if file.filename == '':
+        return jsonify({'error': 'Nom de fichier vide.'}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        file.save(filepath)
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE utilisateur SET photo_profil = %s WHERE id = %s",
+                    (filename, current_user.id)
+                )
+                conn.commit()
+            return jsonify({'message': 'Photo mise à jour avec succès.', 'photo_profil': filename}), 200
+        finally:
+            conn.close()
+
+    return jsonify({'error': 'Format de fichier non autorisé.'}), 400
+
+
+
+
+
+
+
+
+
+
 
 
 # Mofification du mot de passe à la première connexion
