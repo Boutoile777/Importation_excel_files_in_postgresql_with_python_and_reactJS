@@ -80,7 +80,8 @@ function MonCompte() {
 
 
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('photo', file);
+
 
     try {
       const response = await fetch(`${baseUrl}/auth/me/avatar`, {
@@ -180,11 +181,13 @@ function MonCompte() {
                 {preview ? (
                   <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
                 ) : user.photo_profil ? (
+                  
                   <img
                     src={`http://localhost:5000/uploads/profils/${user.photo_profil}`}
-                    alt=""
-                    className="object-cover w-full h-full"
+                    alt="Photo de profil"
+                    className="rounded-full w-32 h-32 object-cover"
                   />
+
                 ) : (
                   <span className="text-6xl font-bold text-green-700">
                     {(user.prenom?.[0] || '') + (user.nom?.[0] || '')}

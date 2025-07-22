@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session, current_app
+from flask import Blueprint, request, jsonify, session, current_app, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from db import get_connection
 from utils.password import hash_password, check_password
@@ -19,13 +19,7 @@ from extensions import mail
 import os
 from werkzeug.utils import secure_filename
 
-#Stockage des images de profil 
 
-UPLOAD_FOLDER = 'uploads/profils'  # Chemin local pour stocker les images
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 
@@ -238,6 +232,21 @@ def update_current_user():
 
 #Route de gestion de la photo de profil 
 
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+PROFILS_FOLDER = os.path.join(UPLOAD_FOLDER, 'profils')
+os.makedirs(PROFILS_FOLDER, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Route pour servir les photos de profil (optionnel ici, tu peux la mettre dans app.py)
+@auth_bp.route('/uploads/profils/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(PROFILS_FOLDER, filename)
+
 @auth_bp.route('/me/avatar', methods=['PATCH'])
 @login_required
 def update_photo():
@@ -250,10 +259,10 @@ def update_photo():
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(PROFILS_FOLDER, filename)
         file.save(filepath)
 
+        # Mise à jour base de données avec le nom du fichier
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
@@ -269,9 +278,6 @@ def update_photo():
             conn.close()
 
     return jsonify({'error': 'Format de fichier non autorisé.'}), 400
-
-
-
 
 
 
