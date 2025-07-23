@@ -156,6 +156,9 @@ function ProjetsFinancementTable() {
       doc.addImage(logo, 'PNG', 250, 5, 40, 20);
     }
 
+
+
+    
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -177,15 +180,15 @@ function ProjetsFinancementTable() {
           doc.internal.pageSize.getHeight() - 10
         );
       },
-      didParseCell: data => {
-        const montantCols = [2, 3, 4, 5, 6];
-        if (
-          montantCols.includes(data.column.index) &&
-          typeof data.cell.raw === 'number'
-        ) {
-          data.cell.text = data.cell.raw.toLocaleString();
-        }
-      },
+      // didParseCell: data => {
+      //   const montantCols = [2, 3, 4, 5, 6];
+      //   if (
+      //     montantCols.includes(data.column.index) &&
+      //     typeof data.cell.raw === 'number'
+      //   ) {
+      //     data.cell.text = data.cell.raw.toLocaleString();
+      //   }
+      // },
     });
 
     doc.save('projets_financement.pdf');

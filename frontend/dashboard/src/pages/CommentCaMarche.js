@@ -116,7 +116,7 @@ function CommentCaMarche() {
             Vous pouvez télécharger un exemple de fichier correctement structuré ci-dessous pour éviter toute erreur.
           </p>
           <a
-            href="/assets/Nomenclature.xlsx"
+            href="/assets/files.xlsx"
             download
             className="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-medium shadow hover:bg-green-700 transition duration-300"
           >
