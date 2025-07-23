@@ -176,7 +176,7 @@ function MonCompte() {
         {/* Avatar dynamique ou initiales */}
                   
           <div className="flex flex-col items-center gap-4">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-green-200 shadow-md flex items-center justify-center relative cursor-pointer">
+            <div className="w-44 h-44 md:w-48 md:h-48 rounded-full overflow-hidden bg-gray-100 border-4  shadow-lg flex items-center justify-center relative cursor-pointer">
                 {/* Avatar ou initiales */}
                 {preview ? (
                   <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
@@ -185,7 +185,8 @@ function MonCompte() {
                   <img
                     src={`http://localhost:5000/uploads/profils/${user.photo_profil}`}
                     alt="Photo de profil"
-                    className="rounded-full w-32 h-32 object-cover"
+                    className="w-full h-full object-cover"
+
                   />
 
                 ) : (
