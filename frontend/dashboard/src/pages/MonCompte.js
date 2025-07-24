@@ -1,8 +1,5 @@
-
-
-
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiEdit3, FiCheck, FiX, FiCamera } from 'react-icons/fi';
+import { FiUser, FiMail, FiEdit3, FiCheck, FiX, FiCamera, FiLock, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 function MonCompte() {
   const [user, setUser] = useState({ nom: '', prenom: '', email: '', avatar: null });
@@ -12,19 +9,23 @@ function MonCompte() {
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [preview, setPreview] = useState(null);
 
+  // --- Nouveau states pour mot de passe ---
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const response = await fetch('http://localhost:5000/auth/me', {
           method: 'GET',
           credentials: 'include'
-          
         });
         const data = await response.json();
         if (response.ok) {
           setUser(data);
           setTempValues(data);
-          // setPhotoProfil(data.photo_profil);  // 👈 important
         } else {
           console.error('Utilisateur non connecté :', data.error);
         }
@@ -47,65 +48,53 @@ function MonCompte() {
   };
 
   const handleApplyChanges = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/auth/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          nom: tempValues.nom,
-          prenom: tempValues.prenom,
-          email: tempValues.email
-        })
-      });
+  try {
+    const response = await fetch('http://localhost:5000/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        nom: tempValues.nom,
+        prenom: tempValues.prenom,
+        email: tempValues.email
+      })
+    });
 
-      if (!response.ok) throw new Error("Erreur lors de la mise à jour.");
+    if (!response.ok) throw new Error("Erreur lors de la mise à jour.");
 
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-      setSuccessMessage("✅ Profil mis à jour avec succès.");
-      setTimeout(() => setSuccessMessage(""), 4000);
-    } catch (err) {
-      console.error(err);
-      setSuccessMessage("❌ Échec de la mise à jour du profil.");
-      setTimeout(() => setSuccessMessage(""), 4000);
-    }
-  };
+    const updatedUser = await response.json();
 
- const handleAvatarChange = async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setPreview(URL.createObjectURL(file));
-    setSelectedAvatar(file); // Ajouté
+    setUser(prev => ({
+      ...prev,
+      nom: updatedUser.nom,
+      prenom: updatedUser.prenom,
+      email: updatedUser.email,
+      photo_profil: updatedUser.photo_profil || prev.photo_profil
+    }));
 
-
-    const formData = new FormData();
-    formData.append('photo', file);
-
-
-    try {
-      const response = await fetch(`${baseUrl}/auth/me/avatar`, {
-        method: 'PATCH',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!response.ok) throw new Error("Erreur lors de l'envoi de l'avatar");
-
-      const data = await response.json();
-      setUser((prev) => ({ ...prev, avatar: data.avatar }));
-    } catch (error) {
-      console.error("Erreur lors de l'upload d'avatar :", error);
-    }
+    setSuccessMessage("✅ Profil mis à jour avec succès.");
+    setTimeout(() => setSuccessMessage(""), 4000);
+  } catch (err) {
+    console.error(err);
+    setSuccessMessage("❌ Échec de la mise à jour du profil.");
+    setTimeout(() => setSuccessMessage(""), 4000);
   }
 };
+
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      setSelectedAvatar(file);
+    }
+  };
 
   const handleUploadAvatar = async () => {
     if (!selectedAvatar) return;
 
     const formData = new FormData();
-  formData.append('photo', selectedAvatar);  // clé 'photo' au lieu de 'avatar'
-
+    formData.append('photo', selectedAvatar);
 
     try {
       const response = await fetch('http://localhost:5000/auth/me/avatar', {
@@ -168,89 +157,182 @@ function MonCompte() {
     );
   };
 
+  // --- Gestion du changement de mot de passe ---
+  const handleSubmitPassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!passwords.current || !passwords.new || !passwords.confirm) {
+      setPasswordError('Tous les champs sont requis.');
+      return;
+    }
+    if (passwords.new !== passwords.confirm) {
+      setPasswordError('La confirmation ne correspond pas au nouveau mot de passe.');
+      return;
+    }
+    if (passwords.new.length < 6) {
+      setPasswordError('Le nouveau mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/auth/change-password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_password: passwords.new,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la mise à jour du mot de passe.');
+      }
+
+      setPasswordSuccess('✅ Mot de passe mis à jour avec succès.');
+      setPasswords({ current: '', new: '', confirm: '' });
+      setTimeout(() => setPasswordSuccess(''), 4000);
+      setShowPasswordForm(false);
+    } catch (err) {
+      setPasswordError(err.message);
+      setTimeout(() => setPasswordError(''), 4000);
+    }
+  };
+
   return (
     <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
       <h2 className="text-4xl font-bold text-green-700 mb-8">Mon compte</h2>
 
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-xl p-6 md:p-10 flex flex-col md:flex-row gap-10 items-center md:items-start">
+
         {/* Avatar dynamique ou initiales */}
-                  
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-44 h-44 md:w-48 md:h-48 rounded-full overflow-hidden bg-gray-100 border-4  shadow-lg flex items-center justify-center relative cursor-pointer">
-                {/* Avatar ou initiales */}
-                {preview ? (
-                  <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
-                ) : user.photo_profil ? (
-                  
-                  <img
-                    src={`http://localhost:5000/uploads/profils/${user.photo_profil}`}
-                    alt="Photo de profil"
-                    className="w-full h-full object-cover"
-
-                  />
-
-                ) : (
-                  <span className="text-6xl font-bold text-green-700">
-                    {(user.prenom?.[0] || '') + (user.nom?.[0] || '')}
-                  </span>
-                )}
-
-
-                {/* Overlay avec l’icône appareil photo */}
-                <label
-                  htmlFor="avatarUpload"
-                  className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity rounded-full text-white"
-                  title="Changer la photo"
-                >
-                  <FiCamera size={36} />
-                </label>
-
-                {/* Input caché */}
-                <input
-                  id="avatarUpload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-            </div>
-
-
-            {/* Actions si un fichier est sélectionné */}
-            {selectedAvatar && (
-              <div className="flex gap-3 mt-2">
-                <button
-                  onClick={handleUploadAvatar}
-                  className="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition flex items-center gap-2"
-                >
-                  <FiCheck />
-                  Enregistrer
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedAvatar(null);
-                    setPreview(null);
-                  }}
-                  className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition flex items-center gap-2"
-                >
-                  <FiX />
-                  Annuler
-                </button>
-              </div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-44 h-44 md:w-48 md:h-48 rounded-full overflow-hidden bg-gray-100 border-4 shadow-lg flex items-center justify-center relative cursor-pointer">
+            {/* Avatar ou initiales */}
+            {preview ? (
+              <img src={preview} alt="Aperçu" className="object-cover w-full h-full" />
+            ) : user.photo_profil ? (
+              <img
+                src={`http://localhost:5000/uploads/profils/${user.photo_profil}`}
+                alt="Photo de profil"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-6xl font-bold text-green-700">
+                {(user.prenom?.[0] || '') + (user.nom?.[0] || '')}
+              </span>
             )}
 
-            {/* Message de succès/erreur pour avatar uniquement */}
-            {successMessage && (
-              <p className="text-green-600 font-medium mt-2">{successMessage}</p>
-            )}
+            {/* Overlay avec l’icône appareil photo */}
+            <label
+              htmlFor="avatarUpload"
+              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity rounded-full text-white"
+              title="Changer la photo"
+            >
+              <FiCamera size={36} />
+            </label>
+
+            {/* Input caché */}
+            <input
+              id="avatarUpload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
 
+          {/* Actions si un fichier est sélectionné */}
+          {selectedAvatar && (
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={handleUploadAvatar}
+                className="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition flex items-center gap-2"
+              >
+                <FiCheck />
+                Enregistrer
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedAvatar(null);
+                  setPreview(null);
+                }}
+                className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition flex items-center gap-2"
+              >
+                <FiX />
+                Annuler
+              </button>
+            </div>
+          )}
 
-        {/* Infos utilisateur */}
+          {/* Message de succès/erreur pour avatar uniquement */}
+          {successMessage && (
+            <p className="text-green-600 font-medium mt-2">{successMessage}</p>
+          )}
+        </div>
+
+        {/* Infos utilisateur + mot de passe */}
         <div className="flex flex-col flex-grow gap-6 w-full max-w-md">
           {renderField("Nom", "nom", user.nom, <FiUser size={24} className="text-green-600" />)}
           {renderField("Prénom", "prenom", user.prenom, <FiUser size={24} className="text-green-600" />)}
           {renderField("Adresse email", "email", user.email, <FiMail size={24} className="text-green-600" />)}
+
+          {/* Section Mot de passe dépliable */}
+          <div className="bg-white p-5 rounded-xl shadow border mt-4">
+            <button
+              onClick={() => setShowPasswordForm(!showPasswordForm)}
+              className="w-full flex justify-between items-center font-semibold text-green-700 hover:text-green-800 transition"
+              aria-expanded={showPasswordForm}
+              aria-controls="passwordForm"
+            >
+              <span className="flex items-center gap-2">
+                <FiLock size={20} />
+                Modifier le mot de passe
+              </span>
+              {showPasswordForm ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
+            </button>
+
+            {showPasswordForm && (
+              <div id="passwordForm" className="mt-4 flex flex-col gap-4">
+                <input
+                  type="password"
+                  placeholder="Mot de passe actuel"
+                  value={passwords.current}
+                  onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                  className="border rounded px-3 py-2 w-full"
+                />
+                <input
+                  type="password"
+                  placeholder="Nouveau mot de passe"
+                  value={passwords.new}
+                  onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                  className="border rounded px-3 py-2 w-full"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirmer nouveau mot de passe"
+                  value={passwords.confirm}
+                  onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                  className="border rounded px-3 py-2 w-full"
+                />
+
+                {passwordError && (
+                  <p className="text-red-600 font-medium">{passwordError}</p>
+                )}
+                {passwordSuccess && (
+                  <p className="text-green-600 font-medium">{passwordSuccess}</p>
+                )}
+
+                <button
+                  onClick={handleSubmitPassword}
+                  className="mt-2 bg-green-600 text-white rounded px-4 py-2 hover:bg-green-700 transition"
+                >
+                  Enregistrer le mot de passe
+                </button>
+              </div>
+            )}
+          </div>
 
           {hasChanges() && (
             <>
