@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
@@ -35,7 +33,7 @@ const customStyles = {
   },
 };
 
-/* ---------- Colonnes (sans Type Projet) ---------- */
+/* ---------- Colonnes (sans Type Projet) ---------- */
 const colonnes = [
   { name: 'Date Comité', selector: r => r.date_comite_validation, sortable: true, minWidth: '150px' },
   { name: 'Intitulé Projet', selector: r => r.intitule_projet, sortable: true, minWidth: '250px' },
@@ -54,7 +52,6 @@ const colonnes = [
   { name: 'Créé par', selector: r => r.created_by, sortable: true, minWidth: '150px' },
 ];
 
-/* ---------- Composant ---------- */
 function ProjetsParFacilite() {
   const { id_type_projet } = useParams();
   const [projets, setProjets] = useState([]);
@@ -95,15 +92,53 @@ function ProjetsParFacilite() {
   const exportPDF = () => {
     const doc = new jsPDF('l', 'mm', 'a4');
     const tableColumn = colonnes.map(c => c.name);
+
+    const keyMap = {
+      'Date Comité': 'date_comite_validation',
+      'Intitulé Projet': 'intitule_projet',
+      'Coût Total': 'cout_total_projet',
+      'Crédit Solicité': 'credit_solicite',
+      'Crédit Accordé': 'credit_accorde',
+      'Refinancement Accordé': 'refinancement_accorde',
+      'Total Financement': 'total_financement',
+      'Commune': 'nom_commune',
+      'Filière': 'nom_filiere',
+      'PSF': 'nom_psf',
+      'Promoteur': null,  // on gère à part si besoin
+      'Statut Dossier': 'statut_dossier',
+      'Crédit Accordé Statut': 'credit_accorde_statut',
+      'Créé le': 'created_at',
+      'Créé par': 'created_by',
+    };
+
+    const montantKeys = [
+      'cout_total_projet',
+      'credit_solicite',
+      'credit_accorde',
+      'refinancement_accorde',
+      'total_financement',
+    ];
+
     const tableRows = filtered.map(row =>
-      colonnes.map(c => {
-        const val = c.selector(row);
-        return typeof val === 'number' ? val.toLocaleString() : val ?? '';
+      colonnes.map(col => {
+        if (col.name === 'Promoteur') {
+          return `${row.nom_promoteur ?? ''}`.trim();
+        }
+        const key = keyMap[col.name];
+        if (key && row[key] !== undefined && row[key] !== null) {
+          if (montantKeys.includes(key)) {
+            return Number(row[key]);  // nombre brut, sans formatage toLocaleString
+          }
+          return row[key].toString();
+        }
+        return '';
       })
     );
+
     doc.setFontSize(14);
-    doc.text(`Projets – {f.nom_facilite}`, 14, 15);
+    doc.text(`Projets – Facilité ${id_type_projet}`, 14, 15);
     if (logo) doc.addImage(logo, 'PNG', 250, 5, 40, 20);
+
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -116,6 +151,7 @@ function ProjetsParFacilite() {
         doc.text(`Page ${p}`, doc.internal.pageSize.getWidth() - 20, doc.internal.pageSize.getHeight() - 10);
       },
     });
+
     doc.save(`facilite_${id_type_projet}.pdf`);
   };
 
@@ -134,14 +170,13 @@ function ProjetsParFacilite() {
 
   /* --- États particuliers --- */
   if (loading) return <div className="p-6 text-center text-gray-700">Chargement…</div>;
-  if (error)   return <div className="p-6 text-center text-red-600">Erreur : {error}</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Erreur : {error}</div>;
 
   /* ---------- Rendu ---------- */
   return (
     <div className="w-full min-h-screen bg-gray-50 p-6">
       <h2 className="text-3xl md:text-4xl font-extrabold text-green-700 mb-8 text-center">
         Projets – Facilité {id_type_projet}
-        
       </h2>
 
       {/* Barre de recherche + exports */}

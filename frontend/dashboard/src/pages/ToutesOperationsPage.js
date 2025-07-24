@@ -118,13 +118,14 @@ function ProjetsFinancementTable() {
       'Commune': 'nom_commune',
       'Filière': 'nom_filiere',
       'PSF': 'nom_psf',
-      'Promoteur': null, // gestion spécifique
+      'Promoteur': null,
       'Statut Dossier': 'statut_dossier',
       'Crédit Accordé Statut': 'credit_accorde_statut',
-      'Type Projet': 'nom_type_projet',
-      'Créé Le': 'created_at',
-      'Auteur': 'created_by',
+      'Type projet': 'nom_type_projet',  // attention à la casse aussi !
+      'Créé le': 'created_at',
+      'Créé par': 'created_by',
     };
+
 
     const tableRows = filteredData.map(row =>
       colonnes.map(col => {
