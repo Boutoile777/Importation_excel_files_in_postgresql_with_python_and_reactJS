@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiEdit3, FiCheck, FiX, FiCamera, FiLock, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiUser, FiMail, FiEdit3, FiCheck, FiX, FiCamera, FiLock, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } from 'react-icons/fi';
+
 
 function MonCompte() {
   const [user, setUser] = useState({ nom: '', prenom: '', email: '', avatar: null });
@@ -14,6 +15,11 @@ function MonCompte() {
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState({
+  current: false,
+  new: false,
+  confirm: false,
+  });
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -176,14 +182,17 @@ function MonCompte() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/auth/change-password', {
+      const response = await fetch('/change-password', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
+          current_password: passwords.current,
           new_password: passwords.new,
         }),
       });
+
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -279,43 +288,82 @@ function MonCompte() {
           {renderField("Adresse email", "email", user.email, <FiMail size={24} className="text-green-600" />)}
 
           {/* Section Mot de passe dépliable */}
-          <div className="bg-white p-5 rounded-xl shadow border mt-4">
-            <button
-              onClick={() => setShowPasswordForm(!showPasswordForm)}
-              className="w-full flex justify-between items-center font-semibold text-green-700 hover:text-green-800 transition"
-              aria-expanded={showPasswordForm}
-              aria-controls="passwordForm"
-            >
-              <span className="flex items-center gap-2">
-                <FiLock size={20} />
-                Modifier le mot de passe
-              </span>
-              {showPasswordForm ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
-            </button>
+<div className="bg-white p-5 rounded-xl shadow border mt-4">
+  <button
+    onClick={() => setShowPasswordForm(!showPasswordForm)}
+    className="w-full flex justify-between items-center font-semibold text-green-700 hover:text-green-800 transition"
+    aria-expanded={showPasswordForm}
+    aria-controls="passwordForm"
+  >
+    <span className="flex items-center gap-2">
+      <FiLock size={20} />
+      Modifier le mot de passe
+    </span>
+    {showPasswordForm ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
+  </button>
 
-            {showPasswordForm && (
-              <div id="passwordForm" className="mt-4 flex flex-col gap-4">
-                <input
-                  type="password"
-                  placeholder="Mot de passe actuel"
-                  value={passwords.current}
-                  onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                  className="border rounded px-3 py-2 w-full"
-                />
-                <input
-                  type="password"
-                  placeholder="Nouveau mot de passe"
-                  value={passwords.new}
-                  onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                  className="border rounded px-3 py-2 w-full"
-                />
-                <input
-                  type="password"
-                  placeholder="Confirmer nouveau mot de passe"
-                  value={passwords.confirm}
-                  onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-                  className="border rounded px-3 py-2 w-full"
-                />
+  {showPasswordForm && (
+    <div id="passwordForm" className="mt-4 flex flex-col gap-4">
+
+      {/* Champ : Mot de passe actuel */}
+      <div className="relative">
+        <input
+          type={showPassword.current ? "text" : "password"}
+          placeholder="Mot de passe actuel"
+          value={passwords.current}
+          onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+          className="border rounded px-3 py-2 w-full pr-10"
+        />
+        <button
+          type="button"
+          onClick={() =>
+            setShowPassword((prev) => ({ ...prev, current: !prev.current }))
+          }
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+        >
+          {showPassword.current ? <FiEyeOff /> : <FiEye />}
+        </button>
+      </div>
+
+                {/* Champ : Nouveau mot de passe */}
+                <div className="relative">
+                  <input
+                    type={showPassword.new ? "text" : "password"}
+                    placeholder="Nouveau mot de passe"
+                    value={passwords.new}
+                    onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                    className="border rounded px-3 py-2 w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword((prev) => ({ ...prev, new: !prev.new }))
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                  >
+                    {showPassword.new ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+
+                {/* Champ : Confirmer le mot de passe */}
+                <div className="relative">
+                  <input
+                    type={showPassword.confirm ? "text" : "password"}
+                    placeholder="Confirmer nouveau mot de passe"
+                    value={passwords.confirm}
+                    onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                    className="border rounded px-3 py-2 w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword((prev) => ({ ...prev, confirm: !prev.confirm }))
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                  >
+                    {showPassword.confirm ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
 
                 {passwordError && (
                   <p className="text-red-600 font-medium">{passwordError}</p>
@@ -333,6 +381,7 @@ function MonCompte() {
               </div>
             )}
           </div>
+
 
           {hasChanges() && (
             <>

@@ -19,13 +19,26 @@ npm start
 ├── components
 │   └── Sidebar.js
 │   └── Topbar.js 
+│   └── LogoutButton.js 
 │
 ├── pages
 │   └── CommentCaMarche.js
 │   └── ImporterDonnees.js
 │   └── Historique.js
 │   └── MonCompte.js
-    └── ...etc
-│
+│   └── ResetPassword.js
+│   └── signin.js
+│   └── signup.js
+│   └── ToutesOperations.js
+│   └── ProjetsParFacilites.js
+│   └── Facilite.js
+│   └── ...etc
+│   
+│── assets
+│    └── images et fichiers excel      
+│   
+│── contexts
+│   └── AuthContext.js
+│   
 └── layouts
     └── DashboardUserLayout.js

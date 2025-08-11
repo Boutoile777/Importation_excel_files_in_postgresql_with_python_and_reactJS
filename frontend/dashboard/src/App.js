@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
+import AdminRoute from './components/AdminRoute';
+
 import SignIn from './pages/signin';
 import SignUp from './pages/signup';
 import ForgotPassword from './pages/forgotpasseword';
@@ -24,16 +26,13 @@ const PrivateRoute = () => {
   const { user } = useAuth();
 
   if (!user) {
-    // Non connecté, redirige vers signin
     return <Navigate to="/signin" />;
   }
 
   if (user.force_password_change) {
-    // Connecté mais doit changer son mot de passe => redirige vers force change password
     return <Navigate to="/force-change-password" />;
   }
 
-  // Tout va bien, accès aux routes enfants
   return <Outlet />;
 };
 
@@ -42,12 +41,10 @@ const ForceChangePasswordRoute = () => {
   const { user } = useAuth();
 
   if (!user) {
-    // Non connecté, redirige vers signin
     return <Navigate to="/signin" />;
   }
 
   if (!user.force_password_change) {
-    // Pas besoin de changer le mot de passe, redirige vers dashboard
     return <Navigate to="/dashboard" />;
   }
 
@@ -59,7 +56,6 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Redirection vers /signin à la racine */}
           <Route path="/" element={<Navigate to="/signin" />} />
 
           {/* Routes publiques */}
@@ -76,11 +72,19 @@ function App() {
             <Route element={<DashboardUserLayout />}>
               <Route path="/dashboard" element={<Home />} />
               <Route path="/dashboard/comment-ca-marche" element={<CommentCaMarche />} />
-              <Route path="/dashboard/facilite" element={<Facilite />} />
+              
               <Route path="/dashboard/ex" element={<Ex />} />
-              <Route path="/dashboard/importer" element={<ImporterDonnees />} />
-              <Route path="/dashboard/historique" element={<Historique />} />
+
+              {/* Routes réservées aux admins */}
+              <Route element={<AdminRoute />}>
+                
+                <Route path="/dashboard/historique" element={<Historique />} />
+                <Route path="/dashboard/facilite" element={<Facilite />} />
+              </Route>
+
+              {/* Routes accessibles à tous les utilisateurs connectés */}
               <Route path="/dashboard/mon-compte" element={<MonCompte />} />
+              <Route path="/dashboard/importer" element={<ImporterDonnees />} />
               <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
               <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
             </Route>

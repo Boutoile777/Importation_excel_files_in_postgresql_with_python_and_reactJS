@@ -8,19 +8,6 @@ export const AuthProvider = ({ children }) => {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
-
-
-  // AuthContext.js
-// const login = (userData) => {
-//   setUser(userData);
-//   localStorage.setItem('token', userData.token); // JWT par exemple
-// };
-
-// const logout = () => {
-//   setUser(null);
-//   localStorage.removeItem('token');
-// };
-
 const login = (userData) => {
   setUser(userData);
   if (userData.token) {

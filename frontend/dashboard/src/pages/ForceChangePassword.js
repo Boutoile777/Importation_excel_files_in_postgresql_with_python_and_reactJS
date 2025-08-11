@@ -36,7 +36,7 @@ export default function ForceChangePassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/auth/change-password', {
+      const response = await fetch('http://localhost:5000/auth/change-password-first-login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

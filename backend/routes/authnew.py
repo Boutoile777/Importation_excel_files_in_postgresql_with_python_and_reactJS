@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session, current_app, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from db import get_connection
-from utils.password import hash_password, check_password
+from utils.password import hash_password, check_password, verify_password
 import pandas as pd
 import numpy as np
 from config import get_db_config
@@ -113,6 +113,30 @@ def signup():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+
+
+#Décorateur pour la gestion des rôles
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentification requise'}), 401
+        if not getattr(current_user, 'admin', False):
+            return jsonify({'error': 'Accès refusé: privilèges administrateur requis'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Route de test de la gestion des rôles 
+
+@auth_bp.route('/test-admin', methods=['GET'])
+@login_required
+@admin_required
+def test_admin_route():
+    return jsonify({'message': 'Accès admin réussi'}), 200
+
 
 
 #  # -----------------------------
@@ -290,9 +314,9 @@ def update_photo():
 # Mofification du mot de passe à la première connexion
 
 
-@auth_bp.route('/change-password', methods=['POST'])
+@auth_bp.route('/change-password-first-login', methods=['POST'])
 @login_required
-def change_password():
+def change_password_first_login():
     try:
         data = request.json
         new_password = data.get('new_password')
@@ -950,4 +974,56 @@ def import_excel_history():
 
     finally:
         if conn:
+            conn.close()
+
+
+
+
+from flask import jsonify, request
+from flask_login import login_required, current_user
+
+@auth_bp.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    try:
+        data = request.json
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if not current_password or not new_password:
+            return jsonify({'error': 'Champs requis manquants.'}), 400
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT mot_de_passe FROM utilisateur WHERE id = %s", (current_user.id,))
+            result = cur.fetchone()
+
+            if not result:
+                return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+
+            hashed_password = result[0]
+
+            if not verify_password(current_password, hashed_password):
+                return jsonify({'error': 'Mot de passe actuel incorrect.'}), 401
+
+            new_hashed = hash_password(new_password)
+
+            cur.execute("""
+                UPDATE utilisateur
+                SET mot_de_passe = %s, mot_de_passe_temporaire = false
+                WHERE id = %s
+            """, (new_hashed, current_user.id))
+            conn.commit()
+
+        return jsonify({'message': 'Mot de passe changé avec succès.'}), 200
+
+    except Exception as e:
+        # Toujours renvoyer une réponse JSON
+        return jsonify({'error': f'Erreur serveur : {str(e)}'}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
             conn.close()
