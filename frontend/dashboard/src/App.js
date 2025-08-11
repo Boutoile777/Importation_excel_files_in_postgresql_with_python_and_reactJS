@@ -71,6 +71,7 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<DashboardUserLayout />}>
               <Route path="/dashboard" element={<Home />} />
+              <Route path="/dashboard/importer" element={<ImporterDonnees />} />
               <Route path="/dashboard/comment-ca-marche" element={<CommentCaMarche />} />
               
               <Route path="/dashboard/ex" element={<Ex />} />
@@ -84,7 +85,6 @@ function App() {
 
               {/* Routes accessibles à tous les utilisateurs connectés */}
               <Route path="/dashboard/mon-compte" element={<MonCompte />} />
-              <Route path="/dashboard/importer" element={<ImporterDonnees />} />
               <Route path="/dashboard/facilites/toutes-operations" element={<ToutesOperationsPage />} />
               <Route path="/dashboard/facilites/:id_type_projet" element={<ProjetsParFacilite />} />
             </Route>
