@@ -37,11 +37,8 @@ export default function SignUp() {
       const result = await response.json();
 
       if (response.ok) {
-        setMessage({ text: 'Inscription réussie ! Connectez-vous maintenant.', color: 'text-emerald-600' });
+        setMessage({ text: 'Inscription réussie !', color: 'text-emerald-600' });
         setFormData({ nom: '', prenom: '', email: '', mot_de_passe: '' });
-        setTimeout(() => {
-          window.location.href = '/signin';
-        }, 2000);
       } else {
         setMessage({ text: result.error || 'Une erreur est survenue.', color: 'text-red-600' });
       }
@@ -53,7 +50,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="bg-gray-200 flex items-center justify-center min-h-screen px-4">
+    <div className=" flex items-center justify-center min-h-screen px-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-5xl flex flex-col md:flex-row overflow-hidden">
         {/* Left */}
         <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-emerald-50 to-gray-100 items-center justify-center p-10 rounded-l-2xl shadow-inner">
@@ -73,7 +70,7 @@ export default function SignUp() {
           </div>
 
           <h1 className="text-2xl font-semibold text-center text-gray-700 mb-6">
-            Portail d'inscription
+            Créez un utilisateur
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -164,7 +161,7 @@ export default function SignUp() {
                 loading ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-emerald-600 hover:bg-teal-800 text-white'
               }`}
             >
-              {loading ? 'Chargement...' : "S'inscrire"}
+              {loading ? 'Chargement...' : "Let's Go!"}
             </button>
           </form>
 
@@ -174,12 +171,12 @@ export default function SignUp() {
             </p>
           )}
 
-          <p className="mt-4 text-center text-gray-600">
+          {/* <p className="mt-4 text-center text-gray-600">
             Déjà un compte ?{' '}
             <a href="/signin" className="text-emerald-600 hover:underline">
               Se connecter
             </a>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

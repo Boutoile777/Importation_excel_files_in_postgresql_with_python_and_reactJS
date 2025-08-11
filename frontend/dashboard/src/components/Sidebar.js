@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  FiHome, FiHelpCircle, FiUpload, FiClock, FiUser, FiX, FiTool, FiChevronDown, FiChevronUp,
+  FiHome, FiHelpCircle, FiUpload, FiClock, FiUser, FiX, FiTool, FiChevronDown, FiChevronUp,FiUserPlus,
 } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,7 +35,6 @@ function Sidebar({ isOpen, setIsOpen }) {
     }`;
 
   if (!user) {
-    // Si pas encore chargé ou pas connecté, on peut afficher rien ou loader
     return null;
   }
 
@@ -45,7 +44,6 @@ function Sidebar({ isOpen, setIsOpen }) {
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } flex flex-col`}
     >
-      {/* Logo & fermeture */}
       <div className="flex justify-between items-center mb-4 md:hidden">
         <img src={logo} alt="Logo" className="h-14" />
         <button onClick={() => setIsOpen(false)} aria-label="Fermer le menu">
@@ -53,73 +51,83 @@ function Sidebar({ isOpen, setIsOpen }) {
         </button>
       </div>
 
-      {/* Logo en desktop */}
       <div className="hidden md:flex justify-center mb-6">
         <img src={logo} alt="Logo" className="h-20 select-none" />
       </div>
 
-      {/* Navigation scrollable */}
       <nav className="flex flex-col gap-2 overflow-y-auto pr-1 flex-grow scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-        {/* Tous les utilisateurs voient Accueil et Fonctionnement */}
+        {/* Options visibles par tous */}
         <NavLink to="/dashboard" end className={linkClasses}>
           <FiHome /> Accueil
         </NavLink>
+
         <NavLink to="/dashboard/comment-ca-marche" className={linkClasses}>
           <FiHelpCircle /> Fonctionnement
         </NavLink>
 
-        {/* Si admin uniquement */}
-        {user.admin && (
-          <>
-            <NavLink to="/dashboard/importer" className={linkClasses}>
-              <FiUpload /> Importer
-            </NavLink>
-            <NavLink to="/dashboard/historique" className={linkClasses}>
-              <FiClock /> Historique
-            </NavLink>
-            {/* Sous-menu Facilités accordées */}
-            <div>
-              <button
-                onClick={() => setIsFacilitesOpen(!isFacilitesOpen)}
-                className="flex items-center w-full justify-between px-4 py-2.5 text-gray-700 hover:text-green-700 hover:bg-gray-100 rounded-lg font-medium transition-all"
-              >
-                <span className="flex items-center gap-3">
-                  <FiTool /> Facilités accordées
-                </span>
-                {isFacilitesOpen ? <FiChevronUp /> : <FiChevronDown />}
-              </button>
-
-              <div
-                className={`mt-2 ml-6 space-y-1 overflow-hidden transition-all duration-300 ${
-                  isFacilitesOpen ? 'max-h-96' : 'max-h-0'
-                }`}
-              >
-                <NavLink
-                  to="/dashboard/facilites/toutes-operations"
-                  className={linkClasses}
-                >
-                  Toutes les opérations
-                </NavLink>
-                {facilites.map((f) => (
-                  <NavLink
-                    key={f.id_type_projet}
-                    to={`/dashboard/facilites/${f.id_type_projet}`}
-                    className={linkClasses}
-                  >
-                    {f.nom_facilite}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Tous utilisateurs (admin ou user) ont accès à ces pages */}
-        <NavLink to="/dashboard/facilite" className={linkClasses}>
-          <FiTool /> Facilité
+        <NavLink to="/dashboard/importer" className={linkClasses}>
+          <FiUpload /> Importer
         </NavLink>
 
-        {/* Mon compte accessible à tous */}
+        {/* Le lien "Facilité" visible uniquement admin */}
+        {user.admin && (
+          <NavLink to="/dashboard/facilite" className={linkClasses}>
+            <FiTool /> Facilité
+          </NavLink>
+        )}
+
+        {user.admin && (
+          <NavLink to="/dashboard/signup" className={linkClasses}>
+            <FiUserPlus /> Add User
+          </NavLink>
+        )}
+
+        {/* Sous-menu Facilités accordées visible par tous */}
+        <div>
+          <button
+            onClick={() => setIsFacilitesOpen(!isFacilitesOpen)}
+            className="flex items-center w-full justify-between px-4 py-2.5 text-gray-700 hover:text-green-700 hover:bg-gray-100 rounded-lg font-medium transition-all"
+          >
+            <span className="flex items-center gap-3">
+              <FiTool /> Facilités accordées
+            </span>
+            {isFacilitesOpen ? <FiChevronUp /> : <FiChevronDown />}
+          </button>
+
+          <div
+            className={`mt-2 ml-6 space-y-1 overflow-hidden transition-all duration-300 ${
+              isFacilitesOpen ? 'max-h-96' : 'max-h-0'
+            }`}
+          >
+            {/* "Toutes les opérations" visible par tous */}
+            <NavLink
+              to="/dashboard/facilites/toutes-operations"
+              className={linkClasses}
+            >
+              Toutes les opérations
+            </NavLink>
+
+            {/* Liste des facilités */}
+            {facilites.map((f) => (
+              <NavLink
+                key={f.id_type_projet}
+                to={`/dashboard/facilites/${f.id_type_projet}`}
+                className={linkClasses}
+              >
+                {f.nom_facilite}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+
+        {/* Option Historique visible seulement admin */}
+        {user.admin && (
+          <NavLink to="/dashboard/historique" className={linkClasses}>
+            <FiClock /> Historique
+          </NavLink>
+        )}
+
+        {/* Mon compte visible par tous */}
         <div className="mt-4">
           <NavLink to="/dashboard/mon-compte" className={linkClasses}>
             <FiUser /> Mon compte

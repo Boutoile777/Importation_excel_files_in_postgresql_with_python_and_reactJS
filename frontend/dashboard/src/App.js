@@ -60,7 +60,6 @@ function App() {
 
           {/* Routes publiques */}
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
           <Route path="/forgotpasseword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
@@ -79,8 +78,10 @@ function App() {
               {/* Routes réservées aux admins */}
               <Route element={<AdminRoute />}>
                 
+                <Route path="/dashboard/signup" element={<SignUp />} />
                 <Route path="/dashboard/historique" element={<Historique />} />
                 <Route path="/dashboard/facilite" element={<Facilite />} />
+
               </Route>
 
               {/* Routes accessibles à tous les utilisateurs connectés */}
