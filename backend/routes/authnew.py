@@ -139,6 +139,50 @@ def test_admin_route():
 
 
 
+
+# Route pour lister les utilisateurs standards (admin only)
+@auth_bp.route('/utilisateurs-standard', methods=['GET'])
+@login_required
+@admin_required
+def get_utilisateurs_standard():
+    # Vérifier que l'utilisateur connecté est admin
+    if not getattr(current_user, 'admin', False):
+        return jsonify({'error': 'Accès non autorisé'}), 403
+
+    conn = get_connection()
+    if conn is None:
+        return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT nom, prenom, date_creation
+                FROM utilisateur
+                WHERE admin = FALSE
+                ORDER BY date_creation DESC
+            """)
+            rows = cur.fetchall()
+
+            resultat = []
+            for nom, prenom, date_creation in rows:
+                resultat.append({
+                    'nom': nom,
+                    'prenom': prenom,
+                    'date_creation': date_creation.strftime('%d-%m-%Y ') if date_creation else None
+                })
+
+        return jsonify(resultat), 200
+
+    except Exception as e:
+        # log l'erreur côté serveur si tu veux (print ou logger)
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        conn.close()
+
+
+
+
 #  # -----------------------------
 # # Route de connexion
 # # -----------------------------

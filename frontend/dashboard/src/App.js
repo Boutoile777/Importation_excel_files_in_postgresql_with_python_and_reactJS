@@ -20,6 +20,7 @@ import Facilite from './pages/Facilite';
 import Ex from './pages/Ex';
 import ProjetsParFacilite from './pages/ProjetsParFacilite';
 import ToutesOperationsPage from './pages/ToutesOperationsPage';
+import ListeUsersStandard from './pages/ListeUsersStandard';
 
 // Composant pour protéger les routes privées
 const PrivateRoute = () => {
@@ -80,8 +81,9 @@ function App() {
                 
                 <Route path="/dashboard/signup" element={<SignUp />} />
                 <Route path="/dashboard/historique" element={<Historique />} />
+                <Route path="/dashboard/liste-utilisateurs" element={<ListeUsersStandard />} />
                 <Route path="/dashboard/facilite" element={<Facilite />} />
-
+                
               </Route>
 
               {/* Routes accessibles à tous les utilisateurs connectés */}

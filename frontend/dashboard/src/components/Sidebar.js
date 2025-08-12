@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  FiHome, FiHelpCircle, FiUpload, FiClock, FiUser, FiX, FiTool, FiChevronDown, FiChevronUp,FiUserPlus,
+  FiHome, FiHelpCircle, FiUpload, FiClock, FiUser, FiX, FiTool, FiChevronDown, FiChevronUp,FiUserPlus,FiUsers,
 } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -126,6 +126,14 @@ function Sidebar({ isOpen, setIsOpen }) {
             <FiClock /> Historique
           </NavLink>
         )}
+        {user.admin && (
+          
+            <NavLink to="/dashboard/liste-utilisateurs">
+              <FiUsers className="inline-block mr-2" /> Liste utilisateurs
+            </NavLink>
+        
+        )}
+
 
         {/* Mon compte visible par tous */}
         <div className="mt-4">

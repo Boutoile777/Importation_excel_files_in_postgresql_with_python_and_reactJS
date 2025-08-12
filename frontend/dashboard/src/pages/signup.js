@@ -55,9 +55,9 @@ export default function SignUp() {
         {/* Left */}
         <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-emerald-50 to-gray-100 items-center justify-center p-10 rounded-l-2xl shadow-inner">
           <div className="text-center max-w-md">
-            <h2 className="text-3xl font-extrabold text-gray-700 mb-4">Bienvenue !</h2>
+            <h2 className="text-3xl font-extrabold text-gray-700 mb-4">Créer un nouveau compte</h2>
             <p className="text-gray-600 text-lg font-semibold">
-              Inscrivez-vous dès maintenant pour profiter pleinement de tous nos services.
+              
             </p>
             <img src={dec} alt="Inscription" className="mb-6 w-[90%] h-72 mx-auto mt-12 object-contain" />
           </div>
@@ -70,7 +70,7 @@ export default function SignUp() {
           </div>
 
           <h1 className="text-2xl font-semibold text-center text-gray-700 mb-6">
-            Créez un utilisateur
+            New User
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
