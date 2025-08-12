@@ -128,10 +128,10 @@ function Sidebar({ isOpen, setIsOpen }) {
         )}
         {user.admin && (
           
-            <NavLink to="/dashboard/liste-utilisateurs">
-              <FiUsers className="inline-block mr-2" /> Liste utilisateurs
+            <NavLink to="/dashboard/liste-utilisateurs" className={linkClasses}>
+              <FiUsers  /> Liste utilisateurs
             </NavLink>
-        
+          // className="inline-block mr-2"
         )}
 
 

@@ -1,68 +1,85 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
 
-const ListeUsersStandard = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+function ListeUtilisateursStandard() {
+  const [utilisateurs, setUtilisateurs] = useState([]);
+  const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchUtilisateurs = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/auth/utilisateurs-standard', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
+      const data = await res.json();
+
+      if (Array.isArray(data) && data.length > 0) {
+        setUtilisateurs(data);
+        setMessage('');
+      } else {
+        setUtilisateurs([]);
+        setMessage('Aucun utilisateur trouvé.');
+      }
+      setSuccess(true);
+    } catch (error) {
+      setMessage(error.message);
+      setSuccess(false);
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setMessage('');
+        setSuccess(null);
+      }, 4000);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/auth/utilisateurs-standard", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsers(res.data);
-      } catch (error) {
-        console.error("Erreur lors du chargement des utilisateurs :", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
+    fetchUtilisateurs();
   }, []);
 
-  if (loading) {
-    return <div className="text-center mt-10">Chargement...</div>;
-  }
-
-  if (users.length === 0) {
-    return <div className="text-center mt-10">Aucun utilisateur trouvé</div>;
-  }
-
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-        Liste des utilisateurs standards
-      </h2>
+    <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
+      <h1 className="text-5xl font-extrabold text-green-700 mb-12">Utilisateurs Standards</h1>
 
-      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {users.map(({ id, nom, prenom, date_creation, photo_profil }) => (
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8">
+        {loading ? (
+          <p className="text-center text-gray-500">Chargement...</p>
+        ) : utilisateurs.length === 0 ? (
+          <p className="text-center text-gray-500">{message || 'Aucun utilisateur trouvé.'}</p>
+        ) : (
+          <ul className="space-y-4">
+            {utilisateurs.map((u, index) => (
+              <li
+                key={index}
+                className="border border-gray-300 rounded-md p-4 flex justify-between items-center"
+              >
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {u.nom} {u.prenom}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Créé le {u.date_creation || 'N/A'}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {message && (
           <div
-            key={id}
-            className="bg-white rounded-lg shadow-md p-5 flex flex-col items-center text-center hover:shadow-xl transition-shadow duration-300"
+            className={`mt-4 text-center text-lg ${
+              success === true ? 'text-green-700' : ''
+            } ${success === false ? 'text-red-700' : ''}`}
           >
-            {photo_profil ? (
-              <img
-                src={photo_profil}
-                alt={`${prenom} ${nom}`}
-                className="w-24 h-24 rounded-full object-cover mb-4"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold text-3xl mb-4">
-                {prenom.charAt(0)}{nom.charAt(0)}
-              </div>
-            )}
-
-            <h3 className="text-lg font-semibold text-gray-900">{prenom} {nom}</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Inscrit le {new Date(date_creation).toLocaleDateString("fr-FR")}
-            </p>
+            {message}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
-};
+}
 
-export default ListeUsersStandard;
+export default ListeUtilisateursStandard;
