@@ -182,10 +182,9 @@ def get_utilisateurs_standard():
 
 
 
-
-#  # -----------------------------
-# # Route de connexion
-# # -----------------------------
+# -----------------------------
+# Route de connexion avec vérification des permissions
+# -----------------------------
 @auth_bp.route('/signin', methods=['POST'])
 def signin():
     try:
@@ -202,15 +201,21 @@ def signin():
 
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, mot_de_passe, nom, prenom, admin, mot_de_passe_temporaire 
-                FROM utilisateur WHERE email = %s
+                SELECT id, mot_de_passe, nom, prenom, admin, mot_de_passe_temporaire, permission
+                FROM utilisateur 
+                WHERE email = %s
             """, (email,))
             user = cur.fetchone()
 
         if not user:
             return jsonify({'error': 'Utilisateur non trouvé.'}), 404
 
-        user_id, hashed_password, nom, prenom, admin, mot_temp = user
+        user_id, hashed_password, nom, prenom, admin, mot_temp, permission = user
+
+        # 🔒 Vérifier si l'utilisateur est bloqué
+        if permission and permission.lower() == 'bloqué':
+            return jsonify({'error': 'Votre compte a été bloqué. Contactez un administrateur.'}), 403
+
         if not check_password(mot_de_passe, hashed_password):
             return jsonify({'error': 'Mot de passe incorrect.'}), 401
 
@@ -225,7 +230,8 @@ def signin():
                 'prenom': prenom,
                 'email': email,
                 'admin': admin,
-                'mot_de_passe_temporaire': mot_temp  # ✅ Ajout essentiel ici
+                'mot_de_passe_temporaire': mot_temp,
+                'permission': permission
             }
         }), 200
 
@@ -496,6 +502,51 @@ def reset_password(token):
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+# -----------------------------
+# Route de gestion des users par l'admin (bloqué ou débloqué)
+# -----------------------------
+
+@auth_bp.route('/changer_permission/<int:user_id>', methods=['PUT'])
+@login_required
+@admin_required
+def changer_permission(user_id):
+    try:
+        data = request.json
+        nouvelle_permission = data.get('permission')
+
+        if nouvelle_permission not in ['accepté', 'bloqué']:
+            return jsonify({'error': 'Permission invalide. Doit être "accepté" ou "bloqué".'}), 400
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            # Vérifier que l'utilisateur existe
+            cur.execute("SELECT id FROM utilisateur WHERE id = %s", (user_id,))
+            if not cur.fetchone():
+                return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+
+            # Mettre à jour la permission
+            cur.execute("""
+                UPDATE utilisateur
+                SET permission = %s
+                WHERE id = %s
+            """, (nouvelle_permission, user_id))
+            conn.commit()
+
+        return jsonify({'message': f'Permission mise à jour en "{nouvelle_permission}" pour l\'utilisateur {user_id}.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
 
 
 

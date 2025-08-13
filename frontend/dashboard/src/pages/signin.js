@@ -14,57 +14,63 @@ export default function SignIn() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage('');
-    setLoading(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setMessage('');
+  setLoading(true);
+  try {
+    const response = await fetch('http://localhost:5000/auth/signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        email: email.trim(),
+        mot_de_passe: password,
+      }),
+    });
 
+    const text = await response.text();
+
+    let result;
     try {
-      const response = await fetch('http://localhost:5000/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: email.trim(),
-          mot_de_passe: password,
-        }),
-      });
-
-      const text = await response.text();
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (jsonErr) {
-        console.error("Erreur de parsing JSON:", jsonErr);
-        throw new Error("Réponse invalide du serveur (non JSON).");
-      }
-
-            if (response.ok) {
-        setMessageColor('text-green-600');
-        setMessage('Connexion réussie !');
-        login(result.user);
-
-        setTimeout(() => {
-          if (result.user.mot_de_passe_temporaire) {
-            navigate('/force-change-password');  // rediriger vers la bonne page
-          } else {
-            navigate('/dashboard');  // rediriger normalement
-          }
-        }, 1000);
-      }
-        else {
-                setMessageColor('text-red-600');
-                setMessage(result.error || 'Erreur lors de la connexion.');
-              }
-    } catch (err) {
-      console.error("Erreur dans le fetch:", err);
-      setMessageColor('text-red-600');
-      setMessage('Impossible de contacter le serveur.');
-    } finally {
-      setLoading(false);
+      result = JSON.parse(text);
+    } catch (jsonErr) {
+      console.error("Erreur de parsing JSON:", jsonErr);
+      throw new Error("Réponse invalide du serveur (non JSON).");
     }
-  };
+
+    if (response.ok) {
+      setMessageColor('text-green-600');
+      setMessage('Connexion réussie !');
+      login(result.user);
+
+      setTimeout(() => {
+        if (result.user.mot_de_passe_temporaire) {
+          navigate('/force-change-password');  
+        } else {
+          navigate('/dashboard');  
+        }
+      }, 1000);
+
+    } else {
+      // ✅ Cas spécial : compte bloqué
+      if (response.status === 403) {
+        setMessageColor('text-red-700 font-bold');
+        setMessage('⛔ Votre compte a été bloqué. Contacter le Service  Informatique du FNDA.');
+      } else {
+        setMessageColor('text-red-600');
+        setMessage(result.error || 'Erreur lors de la connexion.');
+      }
+    }
+  } catch (err) {
+    console.error("Erreur dans le fetch:", err);
+    setMessageColor('text-red-600');
+    setMessage('Impossible de contacter le serveur.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="bg-gray-200 flex items-center justify-center min-h-screen px-4">
