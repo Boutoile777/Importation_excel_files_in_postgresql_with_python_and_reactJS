@@ -63,6 +63,12 @@ function ListeUtilisateursStandard() {
                     Créé le {u.date_creation || 'N/A'}
                   </p>
                 </div>
+                <button
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold"
+                  type="button"
+                >
+                  Bloqué
+                </button>
               </li>
             ))}
           </ul>
