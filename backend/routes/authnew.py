@@ -698,193 +698,194 @@ def delete_type_projet(id_type_projet):
 
 
 
+#Route d'importation dans excel
 
-@auth_bp.route("/import_excel", methods=["POST"])
-@login_required
-def import_excel():
-    conn = None
-    try:
-        if 'file' not in request.files:
-            return jsonify({"error": "Aucun fichier fourni"}), 400
+# @auth_bp.route("/import_excel", methods=["POST"])
+# @login_required
+# def import_excel():
+#     conn = None
+#     try:
+#         if 'file' not in request.files:
+#             return jsonify({"error": "Aucun fichier fourni"}), 400
 
-        file = request.files['file']
-        nom_fichier = file.filename if file else None
+#         file = request.files['file']
+#         nom_fichier = file.filename if file else None
 
-        df = pd.read_excel(file)
-        df = df.replace({np.nan: None})
+#         df = pd.read_excel(file)
+#         df = df.replace({np.nan: None})
 
-        required_columns = [
-            "date_comite_validation", "numero", "pda", "psf", "departement",
-            "commune", "intitule_projet", "denomination_entite", "nom_promoteur",
-            "sexe_promoteur", "statut_juridique", "adresse_contact", "filiere",
-            "maillon_type_credit", "cout_total_projet", "credit_solicite",
-            "credit_accorde", "refinancement_accorde", "credit_accorde_statut",
-            "total_financement", "statut_dossier"
-        ]
+#         required_columns = [
+#             "date_comite_validation", "numero", "pda", "psf", "departement",
+#             "commune", "intitule_projet", "denomination_entite", "nom_promoteur",
+#             "sexe_promoteur", "statut_juridique", "adresse_contact", "filiere",
+#             "maillon_type_credit", "cout_total_projet", "credit_solicite",
+#             "credit_accorde", "refinancement_accorde", "credit_accorde_statut",
+#             "total_financement", "statut_dossier"
+#         ]
 
-        missing_cols = [col for col in required_columns if col not in df.columns]
-        if missing_cols:
-            return jsonify({"error": f"Colonnes manquantes dans le fichier Excel: {', '.join(missing_cols)}"}), 400
+#         missing_cols = [col for col in required_columns if col not in df.columns]
+#         if missing_cols:
+#             return jsonify({"error": f"Colonnes manquantes dans le fichier Excel: {', '.join(missing_cols)}"}), 400
 
-        if df["date_comite_validation"].dtype in ["float64", "int64"]:
-            df["date_comite_validation"] = pd.to_datetime(df["date_comite_validation"], unit='d', origin='1899-12-30')
+#         if df["date_comite_validation"].dtype in ["float64", "int64"]:
+#             df["date_comite_validation"] = pd.to_datetime(df["date_comite_validation"], unit='d', origin='1899-12-30')
 
-        id_type_projet = session.get('id_type_projet')
-        if not id_type_projet:
-            return jsonify({"error": "Type de projet non sélectionné dans la session."}), 400
+#         id_type_projet = session.get('id_type_projet')
+#         if not id_type_projet:
+#             return jsonify({"error": "Type de projet non sélectionné dans la session."}), 400
 
-        created_by = f"{current_user.prenom} {current_user.nom}"
+#         created_by = f"{current_user.prenom} {current_user.nom}"
 
-        conn = get_connection()
-        if conn is None:
-            return jsonify({"error": "Connexion à la base impossible."}), 500
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({"error": "Connexion à la base impossible."}), 500
 
-        with conn.cursor() as cur:
-            # Vider table temporaire
-            cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
+#         with conn.cursor() as cur:
+#             # Vider table temporaire
+#             cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
 
-            for _, row in df.iterrows():
-                row_dict = row.to_dict()
+#             for _, row in df.iterrows():
+#                 row_dict = row.to_dict()
 
-                cur.execute("""
-                    INSERT INTO donnees_importees (
-                        date_comite_validation, numero, pda, psf, departement,
-                        commune, intitule_projet, denomination_entite, nom_promoteur,
-                        sexe_promoteur, statut_juridique, adresse_contact, filiere,
-                        maillon_type_credit, cout_total_projet, credit_solicite,
-                        credit_accorde, refinancement_accorde, credit_accorde_statut,
-                        total_financement, statut_dossier
-                    ) VALUES (
-                        %(date_comite_validation)s, %(numero)s, %(pda)s, %(psf)s, %(departement)s,
-                        %(commune)s, %(intitule_projet)s, %(denomination_entite)s, %(nom_promoteur)s,
-                        %(sexe_promoteur)s, %(statut_juridique)s, %(adresse_contact)s, %(filiere)s,
-                        %(maillon_type_credit)s, %(cout_total_projet)s, %(credit_solicite)s,
-                        %(credit_accorde)s, %(refinancement_accorde)s, %(credit_accorde_statut)s,
-                        %(total_financement)s, %(statut_dossier)s
-                    )
-                """, row_dict)
+#                 cur.execute("""
+#                     INSERT INTO donnees_importees (
+#                         date_comite_validation, numero, pda, psf, departement,
+#                         commune, intitule_projet, denomination_entite, nom_promoteur,
+#                         sexe_promoteur, statut_juridique, adresse_contact, filiere,
+#                         maillon_type_credit, cout_total_projet, credit_solicite,
+#                         credit_accorde, refinancement_accorde, credit_accorde_statut,
+#                         total_financement, statut_dossier
+#                     ) VALUES (
+#                         %(date_comite_validation)s, %(numero)s, %(pda)s, %(psf)s, %(departement)s,
+#                         %(commune)s, %(intitule_projet)s, %(denomination_entite)s, %(nom_promoteur)s,
+#                         %(sexe_promoteur)s, %(statut_juridique)s, %(adresse_contact)s, %(filiere)s,
+#                         %(maillon_type_credit)s, %(cout_total_projet)s, %(credit_solicite)s,
+#                         %(credit_accorde)s, %(refinancement_accorde)s, %(credit_accorde_statut)s,
+#                         %(total_financement)s, %(statut_dossier)s
+#                     )
+#                 """, row_dict)
 
-                cur.execute("""
-                    INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (nom_promoteur, nom_entite) DO NOTHING
-                """, (
-                    row_dict["nom_promoteur"], row_dict["denomination_entite"],
-                    row_dict["sexe_promoteur"], row_dict["statut_juridique"]
-                ))
+#                 cur.execute("""
+#                     INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique)
+#                     VALUES (%s, %s, %s, %s)
+#                     ON CONFLICT (nom_promoteur, nom_entite) DO NOTHING
+#                 """, (
+#                     row_dict["nom_promoteur"], row_dict["denomination_entite"],
+#                     row_dict["sexe_promoteur"], row_dict["statut_juridique"]
+#                 ))
 
-                cur.execute("""
-                    INSERT INTO psf (nom_psf)
-                    VALUES (%s)
-                    ON CONFLICT (nom_psf) DO NOTHING
-                """, (row_dict["psf"],))
+#                 cur.execute("""
+#                     INSERT INTO psf (nom_psf)
+#                     VALUES (%s)
+#                     ON CONFLICT (nom_psf) DO NOTHING
+#                 """, (row_dict["psf"],))
 
-                cur.execute("""
-                    INSERT INTO filiere (nom_filiere, maillon)
-                    VALUES (%s, %s)
-                    ON CONFLICT (nom_filiere) DO NOTHING
-                """, (row_dict["filiere"], row_dict["maillon_type_credit"]))
+#                 cur.execute("""
+#                     INSERT INTO filiere (nom_filiere, maillon)
+#                     VALUES (%s, %s)
+#                     ON CONFLICT (nom_filiere) DO NOTHING
+#                 """, (row_dict["filiere"], row_dict["maillon_type_credit"]))
 
-                # Récupérer les ids liés
-                cur.execute("SELECT id_promoteur FROM promoteur WHERE nom_promoteur = %s AND nom_entite = %s",
-                            (row_dict["nom_promoteur"], row_dict["denomination_entite"]))
-                id_promoteur = cur.fetchone()
-                id_promoteur = id_promoteur[0] if id_promoteur else None
+#                 # Récupérer les ids liés
+#                 cur.execute("SELECT id_promoteur FROM promoteur WHERE nom_promoteur = %s AND nom_entite = %s",
+#                             (row_dict["nom_promoteur"], row_dict["denomination_entite"]))
+#                 id_promoteur = cur.fetchone()
+#                 id_promoteur = id_promoteur[0] if id_promoteur else None
 
-                cur.execute("SELECT id_psf FROM psf WHERE nom_psf = %s", (row_dict["psf"],))
-                id_psf = cur.fetchone()
-                id_psf = id_psf[0] if id_psf else None
+#                 cur.execute("SELECT id_psf FROM psf WHERE nom_psf = %s", (row_dict["psf"],))
+#                 id_psf = cur.fetchone()
+#                 id_psf = id_psf[0] if id_psf else None
 
-                cur.execute("SELECT id_filiere FROM filiere WHERE nom_filiere = %s", (row_dict["filiere"],))
-                id_filiere = cur.fetchone()
-                id_filiere = id_filiere[0] if id_filiere else None
+#                 cur.execute("SELECT id_filiere FROM filiere WHERE nom_filiere = %s", (row_dict["filiere"],))
+#                 id_filiere = cur.fetchone()
+#                 id_filiere = id_filiere[0] if id_filiere else None
 
-                nom_commune = row_dict["commune"].strip().lower()
-                cur.execute("""
-                    SELECT id_commune FROM commune
-                    WHERE TRIM(LOWER(nom_commune)) = %s
-                """, (nom_commune,))
-                result_commune = cur.fetchone()
-                id_commune = result_commune[0] if result_commune else None
+#                 nom_commune = row_dict["commune"].strip().lower()
+#                 cur.execute("""
+#                     SELECT id_commune FROM commune
+#                     WHERE TRIM(LOWER(nom_commune)) = %s
+#                 """, (nom_commune,))
+#                 result_commune = cur.fetchone()
+#                 id_commune = result_commune[0] if result_commune else None
 
-                if not id_commune:
-                    raise ValueError(f"Commune non trouvée pour : '{row_dict['commune']}'")
+#                 if not id_commune:
+#                     raise ValueError(f"Commune non trouvée pour : '{row_dict['commune']}'")
 
-                # Insertion finale dans projet_financement
-                cur.execute("""
-                    INSERT INTO projet_financement (
-                        date_comite_validation, id_psf, id_commune,
-                        intitule_projet, id_promoteur, id_filiere,
-                        cout_total_projet, credit_solicite, credit_accorde,
-                        refinancement_accorde, credit_accorde_statut, total_financement,
-                        statut_dossier, id_type_projet, created_by
-                    ) VALUES (
-                        %(date_comite_validation)s, %(id_psf)s, %(id_commune)s,
-                        %(intitule_projet)s, %(id_promoteur)s, %(id_filiere)s,
-                        %(cout_total_projet)s, %(credit_solicite)s, %(credit_accorde)s,
-                        %(refinancement_accorde)s, %(credit_accorde_statut)s, %(total_financement)s,
-                        %(statut_dossier)s, %(id_type_projet)s, %(created_by)s
-                    )
-                """, {
-                    "date_comite_validation": row_dict["date_comite_validation"],
-                    "id_psf": id_psf,
-                    "id_commune": id_commune,
-                    "intitule_projet": row_dict["intitule_projet"],
-                    "id_promoteur": id_promoteur,
-                    "id_filiere": id_filiere,
-                    "cout_total_projet": row_dict["cout_total_projet"],
-                    "credit_solicite": row_dict["credit_solicite"],
-                    "credit_accorde": row_dict["credit_accorde"],
-                    "refinancement_accorde": row_dict["refinancement_accorde"],
-                    "credit_accorde_statut": row_dict["credit_accorde_statut"],
-                    "total_financement": row_dict["total_financement"],
-                    "statut_dossier": row_dict["statut_dossier"],
-                    "id_type_projet": id_type_projet,
-                    "created_by": created_by
-                })
+#                 # Insertion finale dans projet_financement
+#                 cur.execute("""
+#                     INSERT INTO projet_financement (
+#                         date_comite_validation, id_psf, id_commune,
+#                         intitule_projet, id_promoteur, id_filiere,
+#                         cout_total_projet, credit_solicite, credit_accorde,
+#                         refinancement_accorde, credit_accorde_statut, total_financement,
+#                         statut_dossier, id_type_projet, created_by
+#                     ) VALUES (
+#                         %(date_comite_validation)s, %(id_psf)s, %(id_commune)s,
+#                         %(intitule_projet)s, %(id_promoteur)s, %(id_filiere)s,
+#                         %(cout_total_projet)s, %(credit_solicite)s, %(credit_accorde)s,
+#                         %(refinancement_accorde)s, %(credit_accorde_statut)s, %(total_financement)s,
+#                         %(statut_dossier)s, %(id_type_projet)s, %(created_by)s
+#                     )
+#                 """, {
+#                     "date_comite_validation": row_dict["date_comite_validation"],
+#                     "id_psf": id_psf,
+#                     "id_commune": id_commune,
+#                     "intitule_projet": row_dict["intitule_projet"],
+#                     "id_promoteur": id_promoteur,
+#                     "id_filiere": id_filiere,
+#                     "cout_total_projet": row_dict["cout_total_projet"],
+#                     "credit_solicite": row_dict["credit_solicite"],
+#                     "credit_accorde": row_dict["credit_accorde"],
+#                     "refinancement_accorde": row_dict["refinancement_accorde"],
+#                     "credit_accorde_statut": row_dict["credit_accorde_statut"],
+#                     "total_financement": row_dict["total_financement"],
+#                     "statut_dossier": row_dict["statut_dossier"],
+#                     "id_type_projet": id_type_projet,
+#                     "created_by": created_by
+#                 })
 
-            # Commit des données principales
-            conn.commit()
+#             # Commit des données principales
+#             conn.commit()
 
-            # Insérer l'historique d'importation en succès
-            cur.execute("""
-                INSERT INTO historique_importation (
-                    nom_fichier, id_type_projet, utilisateur, statut
-                ) VALUES (%s, %s, %s, %s)
-            """, (nom_fichier, id_type_projet, created_by, True))
+#             # Insérer l'historique d'importation en succès
+#             cur.execute("""
+#                 INSERT INTO historique_importation (
+#                     nom_fichier, id_type_projet, utilisateur, statut
+#                 ) VALUES (%s, %s, %s, %s)
+#             """, (nom_fichier, id_type_projet, created_by, True))
 
-            conn.commit()
+#             conn.commit()
 
-        session.pop('id_type_projet', None)
-        return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
+#         session.pop('id_type_projet', None)
+#         return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
 
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        try:
-            # Enregistrement dans historique d'import en cas d'erreur
-          with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO historique_importation (
-                        nom_fichier, id_type_projet, utilisateur, statut
-                    ) VALUES (%s, %s, %s, %s)
-                """, (
-                    nom_fichier if 'nom_fichier' in locals() else None,
-                    id_type_projet if 'id_type_projet' in locals() else None,
-                    created_by if 'created_by' in locals() else None,
-                    False
-                ))
-                conn.commit()
+#     except Exception as e:
+#         if conn:
+#             conn.rollback()
+#         try:
+#             # Enregistrement dans historique d'import en cas d'erreur
+#           with conn.cursor() as cur:
+#                 cur.execute("""
+#                     INSERT INTO historique_importation (
+#                         nom_fichier, id_type_projet, utilisateur, statut
+#                     ) VALUES (%s, %s, %s, %s)
+#                 """, (
+#                     nom_fichier if 'nom_fichier' in locals() else None,
+#                     id_type_projet if 'id_type_projet' in locals() else None,
+#                     created_by if 'created_by' in locals() else None,
+#                     False
+#                 ))
+#                 conn.commit()
 
-        except:
-            # On ignore l'erreur ici pour ne pas masquer l'originale
-            pass
+#         except:
+#             # On ignore l'erreur ici pour ne pas masquer l'originale
+#             pass
 
-        return jsonify({"error": str(e)}), 500
+#         return jsonify({"error": str(e)}), 500
 
-    finally:
-        if conn:
-            conn.close()
+#     finally:
+#         if conn:
+#             conn.close()
 
 
 
@@ -1121,4 +1122,282 @@ def change_password():
 
     finally:
         if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@auth_bp.route("/import_excel", methods=["POST"])
+@login_required
+def import_excel():
+    conn = None
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "Aucun fichier fourni"}), 400
+
+        file = request.files['file']
+        nom_fichier = file.filename if file else None
+
+        # 1️⃣ Lecture du fichier Excel
+        df = pd.read_excel(file)
+        df = df.replace({np.nan: None})
+
+        # 2️⃣ Mapping des noms Excel → noms de colonnes en base
+        column_mapping = {
+            "Date comité": "date_comite_validation",
+            "N° dossier": "numero",
+            "PDA": "pda",
+            "Nom PSF": "psf",
+            "Département": "departement",
+            "Commune": "commune",
+            "Intitulé du projet": "intitule_projet",
+            "Nom de l'entité": "denomination_entite",
+            "Nom du promoteur": "nom_promoteur",
+            "Sexe": "sexe_promoteur",
+            "Statut juridique": "statut_juridique",
+            "Adresse": "adresse_contact",
+            "Filière": "filiere",
+            "Maillon / type crédit": "maillon_type_credit",
+            "Coût total": "cout_total_projet",
+            "Crédit sollicité": "credit_solicite",
+            "Crédit accordé": "credit_accorde",
+            "Refinancement": "refinancement_accorde",
+            "Statut crédit accordé": "credit_accorde_statut",
+            "Total financement": "total_financement",
+            "Statut dossier": "statut_dossier"
+        }
+
+        # Renommer les colonnes selon le mapping
+        df.rename(columns=column_mapping, inplace=True)
+
+        # 3️⃣ Vérifier que toutes les colonnes attendues existent après renommage
+        required_columns = list(column_mapping.values())
+        missing_cols = [col for col in required_columns if col not in df.columns]
+        if missing_cols:
+            return jsonify({"error": f"Colonnes manquantes après renommage : {', '.join(missing_cols)}"}), 400
+
+        # 4️⃣ Conversion de date si nécessaire
+        if df["date_comite_validation"].dtype in ["float64", "int64"]:
+            df["date_comite_validation"] = pd.to_datetime(
+                df["date_comite_validation"], unit='d', origin='1899-12-30'
+            )
+
+        # 5️⃣ Récupération de la session
+        id_type_projet = session.get('id_type_projet')
+        if not id_type_projet:
+            return jsonify({"error": "Type de projet non sélectionné dans la session."}), 400
+
+        created_by = f"{current_user.prenom} {current_user.nom}"
+
+        # 6️⃣ Connexion BDD
+        conn = get_connection()
+        if conn is None:
+            return jsonify({"error": "Connexion à la base impossible."}), 500
+
+        with conn.cursor() as cur:
+            # Vider la table temporaire
+            cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
+
+            # Boucle d'insertion inchangée
+            for _, row in df.iterrows():
+                row_dict = row.to_dict()
+
+                cur.execute("""
+                    INSERT INTO donnees_importees (
+                        date_comite_validation, numero, pda, psf, departement,
+                        commune, intitule_projet, denomination_entite, nom_promoteur,
+                        sexe_promoteur, statut_juridique, adresse_contact, filiere,
+                        maillon_type_credit, cout_total_projet, credit_solicite,
+                        credit_accorde, refinancement_accorde, credit_accorde_statut,
+                        total_financement, statut_dossier
+                    ) VALUES (
+                        %(date_comite_validation)s, %(numero)s, %(pda)s, %(psf)s, %(departement)s,
+                        %(commune)s, %(intitule_projet)s, %(denomination_entite)s, %(nom_promoteur)s,
+                        %(sexe_promoteur)s, %(statut_juridique)s, %(adresse_contact)s, %(filiere)s,
+                        %(maillon_type_credit)s, %(cout_total_projet)s, %(credit_solicite)s,
+                        %(credit_accorde)s, %(refinancement_accorde)s, %(credit_accorde_statut)s,
+                        %(total_financement)s, %(statut_dossier)s
+                    )
+                """, row_dict)
+
+                
+                cur.execute("""
+                    INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (nom_promoteur, nom_entite) DO NOTHING
+                    """, (
+                    row_dict["nom_promoteur"], row_dict["denomination_entite"],
+                    row_dict["sexe_promoteur"], row_dict["statut_juridique"]
+                    ))
+
+                cur.execute("""
+                    INSERT INTO psf (nom_psf)
+                    VALUES (%s)
+                    ON CONFLICT (nom_psf) DO NOTHING
+                """, (row_dict["psf"],))
+
+                cur.execute("""
+                    INSERT INTO filiere (nom_filiere, maillon)
+                    VALUES (%s, %s)
+                    ON CONFLICT (nom_filiere) DO NOTHING
+                """, (row_dict["filiere"], row_dict["maillon_type_credit"]))
+
+                # Récupérer les ids liés
+                cur.execute("SELECT id_promoteur FROM promoteur WHERE nom_promoteur = %s AND nom_entite = %s",
+                            (row_dict["nom_promoteur"], row_dict["denomination_entite"]))
+                id_promoteur = cur.fetchone()
+                id_promoteur = id_promoteur[0] if id_promoteur else None
+
+                cur.execute("SELECT id_psf FROM psf WHERE nom_psf = %s", (row_dict["psf"],))
+                id_psf = cur.fetchone()
+                id_psf = id_psf[0] if id_psf else None
+
+                cur.execute("SELECT id_filiere FROM filiere WHERE nom_filiere = %s", (row_dict["filiere"],))
+                id_filiere = cur.fetchone()
+                id_filiere = id_filiere[0] if id_filiere else None
+
+                nom_commune = row_dict["commune"].strip().lower()
+                cur.execute("""
+                    SELECT id_commune FROM commune
+                    WHERE TRIM(LOWER(nom_commune)) = %s
+                """, (nom_commune,))
+                result_commune = cur.fetchone()
+                id_commune = result_commune[0] if result_commune else None
+
+                if not id_commune:
+                    raise ValueError(f"Commune non trouvée pour : '{row_dict['commune']}'")
+
+                # Insertion finale dans projet_financement
+                cur.execute("""
+                    INSERT INTO projet_financement (
+                        date_comite_validation, id_psf, id_commune,
+                        intitule_projet, id_promoteur, id_filiere,
+                        cout_total_projet, credit_solicite, credit_accorde,
+                        refinancement_accorde, credit_accorde_statut, total_financement,
+                        statut_dossier, id_type_projet, created_by
+                    ) VALUES (
+                        %(date_comite_validation)s, %(id_psf)s, %(id_commune)s,
+                        %(intitule_projet)s, %(id_promoteur)s, %(id_filiere)s,
+                        %(cout_total_projet)s, %(credit_solicite)s, %(credit_accorde)s,
+                        %(refinancement_accorde)s, %(credit_accorde_statut)s, %(total_financement)s,
+                        %(statut_dossier)s, %(id_type_projet)s, %(created_by)s
+                    )
+                """, {
+                    "date_comite_validation": row_dict["date_comite_validation"],
+                    "id_psf": id_psf,
+                    "id_commune": id_commune,
+                    "intitule_projet": row_dict["intitule_projet"],
+                    "id_promoteur": id_promoteur,
+                    "id_filiere": id_filiere,
+                    "cout_total_projet": row_dict["cout_total_projet"],
+                    "credit_solicite": row_dict["credit_solicite"],
+                    "credit_accorde": row_dict["credit_accorde"],
+                    "refinancement_accorde": row_dict["refinancement_accorde"],
+                    "credit_accorde_statut": row_dict["credit_accorde_statut"],
+                    "total_financement": row_dict["total_financement"],
+                    "statut_dossier": row_dict["statut_dossier"],
+                    "id_type_projet": id_type_projet,
+                    "created_by": created_by
+                })
+
+            # Commit des données principales
+            conn.commit()
+
+            # Insérer l'historique d'importation en succès
+            cur.execute("""
+                INSERT INTO historique_importation (
+                    nom_fichier, id_type_projet, utilisateur, statut
+                ) VALUES (%s, %s, %s, %s)
+            """, (nom_fichier, id_type_projet, created_by, True))
+
+            conn.commit()
+
+        session.pop('id_type_projet', None)
+        return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        try:
+            # Enregistrement dans historique d'import en cas d'erreur
+          with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO historique_importation (
+                        nom_fichier, id_type_projet, utilisateur, statut
+                    ) VALUES (%s, %s, %s, %s)
+                """, (
+                    nom_fichier if 'nom_fichier' in locals() else None,
+                    id_type_projet if 'id_type_projet' in locals() else None,
+                    created_by if 'created_by' in locals() else None,
+                    False
+                ))
+                conn.commit()
+
+        except:
+            # On ignore l'erreur ici pour ne pas masquer l'originale
+            pass
+
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if conn:
             conn.close()
