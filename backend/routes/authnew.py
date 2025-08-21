@@ -554,122 +554,122 @@ def changer_permission(user_id):
 # Route d'insertion des facilités
 # -----------------------------
 
-@auth_bp.route('/type_projets', methods=['GET'])
-@login_required
-def get_type_projets():
-    try:
-        conn = get_connection()
-        if conn is None:
-            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+# @auth_bp.route('/type_projets', methods=['GET'])
+# @login_required
+# def get_type_projets():
+#     try:
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
-        with conn.cursor() as cur:
-            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet")
-            rows = cur.fetchall()
+#         with conn.cursor() as cur:
+#             cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet")
+#             rows = cur.fetchall()
 
-            type_projets = [
-                {'id_type_projet': row[0], 'nom_facilite': row[1]} for row in rows
-            ]
+#             type_projets = [
+#                 {'id_type_projet': row[0], 'nom_facilite': row[1]} for row in rows
+#             ]
 
-        return jsonify(type_projets), 200
+#         return jsonify(type_projets), 200
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
+#     finally:
+#         if 'conn' in locals() and conn:
+#             conn.close()
 
-#Routes de sélection du type de projet avant importation des données
+# #Routes de sélection du type de projet avant importation des données
 
-@auth_bp.route('/selection_type_projet', methods=['POST'])
-@login_required
-def selection_type_projet():
-    try:
-        data = request.get_json()
-        id_type_projet = data.get('id_type_projet')
+# @auth_bp.route('/selection_type_projet', methods=['POST'])
+# @login_required
+# def selection_type_projet():
+#     try:
+#         data = request.get_json()
+#         id_type_projet = data.get('id_type_projet')
 
-        if not id_type_projet:
-            return jsonify({'error': 'id_type_projet manquant.'}), 400
+#         if not id_type_projet:
+#             return jsonify({'error': 'id_type_projet manquant.'}), 400
 
-        # Enregistrement dans la session utilisateur
-        session['id_type_projet'] = id_type_projet
+#         # Enregistrement dans la session utilisateur
+#         session['id_type_projet'] = id_type_projet
 
-        return jsonify({'message': f'Type de projet sélectionné : {id_type_projet}'}), 200
+#         return jsonify({'message': f'Type de projet sélectionné : {id_type_projet}'}), 200
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 
 
-@auth_bp.route('/types_projets', methods=['GET', 'POST'])
-@login_required
-def handle_type_projets():
-    if request.method == 'GET':
-        try:
-            conn = get_connection()
-            if conn is None:
-                return jsonify({'error': 'Connexion à la base impossible.'}), 500
-
-            with conn.cursor() as cur:
-                cur.execute("SELECT id_type_projet, nom_facilite, date_creation, auteur FROM type_projet")
-                rows = cur.fetchall()
-
-                type_projets = [
-                    {
-                        'id_type_projet': row[0],
-                        'nom_facilite': row[1],
-                        'date_creation': row[2].strftime('%Y-%m-%d') if row[2] else None,
-                        'auteur': row[3] if row[3] else 'N/A'
-                    } for row in rows
-                ]
-
-            return jsonify(type_projets), 200
-
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-        finally:
-            if 'conn' in locals() and conn:
-                conn.close()
-
-    elif request.method == 'POST':
-        return add_type_projet()
 
 
-@login_required
-def add_type_projet():
-    data = request.get_json()
-    nom_facilite = data.get('nom_facilite')
+# @auth_bp.route('/types_projets', methods=['GET', 'POST'])
+# @login_required
+# def handle_type_projets():
+#     if request.method == 'GET':
+#         try:
+#             conn = get_connection()
+#             if conn is None:
+#                 return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
-    if not nom_facilite:
-        return jsonify({'error': 'Le champ nom_facilite est obligatoire.'}), 400
+#             with conn.cursor() as cur:
+#                 cur.execute("SELECT id_type_projet, nom_facilite, date_creation, auteur FROM type_projet")
+#                 rows = cur.fetchall()
 
-    auteur = f"{current_user.nom} {current_user.prenom}"  # Ou current_user.mail, selon ce que tu préfères
+#                 type_projets = [
+#                     {
+#                         'id_type_projet': row[0],
+#                         'nom_facilite': row[1],
+#                         'date_creation': row[2].strftime('%Y-%m-%d') if row[2] else None,
+#                         'auteur': row[3] if row[3] else 'N/A'
+#                     } for row in rows
+#                 ]
 
-    try:
-        conn = get_connection()
-        if conn is None:
-            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+#             return jsonify(type_projets), 200
 
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO type_projet (nom_facilite, auteur) VALUES (%s, %s)",
-                (nom_facilite, auteur)
-            )
-            conn.commit()
+#         except Exception as e:
+#             return jsonify({'error': str(e)}), 500
 
-        return jsonify({'message': 'Facilité ajoutée avec succès.'}), 201
+#         finally:
+#             if 'conn' in locals() and conn:
+#                 conn.close()
 
-    except UniqueViolation:
-        return jsonify({'error': 'Facilité déjà existante.'}), 409
+#     elif request.method == 'POST':
+#         return add_type_projet()
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
+# @login_required
+# def add_type_projet():
+#     data = request.get_json()
+#     nom_facilite = data.get('nom_facilite')
+
+#     if not nom_facilite:
+#         return jsonify({'error': 'Le champ nom_facilite est obligatoire.'}), 400
+
+#     auteur = f"{current_user.nom} {current_user.prenom}"  # Ou current_user.mail, selon ce que tu préfères
+
+#     try:
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+#         with conn.cursor() as cur:
+#             cur.execute(
+#                 "INSERT INTO type_projet (nom_facilite, auteur) VALUES (%s, %s)",
+#                 (nom_facilite, auteur)
+#             )
+#             conn.commit()
+
+#         return jsonify({'message': 'Facilité ajoutée avec succès.'}), 201
+
+#     except UniqueViolation:
+#         return jsonify({'error': 'Facilité déjà existante.'}), 409
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+#     finally:
+#         if 'conn' in locals() and conn:
+#             conn.close()
 
 #Supprimer une facilité créée 
 
@@ -925,7 +925,7 @@ def get_projets_financement():
                     tp.nom_facilite,
                     pf.created_by,
                     pf.created_at
-                FROM projet_financement pf
+                FROM credit_facilite pf
                 LEFT JOIN commune c ON pf.id_commune = c.id_commune
                 LEFT JOIN filiere f ON pf.id_filiere = f.id_filiere
                 LEFT JOIN psf ps ON pf.id_psf = ps.id_psf
@@ -1001,7 +1001,7 @@ def get_projets_par_facilite(id_type_projet):
                     tp.nom_facilite,
                     pf.created_by,
                     pf.created_at
-                FROM projet_financement pf
+                FROM credit_facilite pf
                 LEFT JOIN commune c ON pf.id_commune = c.id_commune
                 LEFT JOIN filiere f ON pf.id_filiere = f.id_filiere
                 LEFT JOIN psf ps ON pf.id_psf = ps.id_psf
@@ -1404,6 +1404,7 @@ def change_password():
 
 
 
+
 @auth_bp.route("/import_excel", methods=["POST"])
 @login_required
 def import_excel():
@@ -1433,21 +1434,21 @@ def import_excel():
             "Nom du promoteur": "nom_promoteur",
             "Sexe": "sexe_promoteur",
             "Statut juridique": "statut_juridique",
-            "Adresse": "adresse_contact",
+            "Adresse/contact": "adresse_contact",
             "NPI": "npi",
             "Rang/Cycles":"rang_cycle",
             "Filière": "filiere",
-            "Maillon / type crédit": "maillon_type_credit",
+            "Maillon/type crédit": "maillon_type_credit",
             "Coût total": "cout_total_projet",
             "Crédit sollicité": "credit_solicite",
             "Crédit accordé": "credit_accorde",
-            "Refinancement": "refinancement_accorde",
+            "Refinancement accordé": "refinancement_accorde",
             "Statut crédit accordé": "credit_accorde_statut",
             "Total financement": "total_financement",
             "Statut dossier": "statut_dossier",
             "Garantie FNDA accordée":"garantie_fnda_accordee",
             "Bonification FNDA accordée":"bonification_fnda_accordee",
-            "MOTIF crédit non accordé":"motif_credit_non_accordee",
+            "MOTIF si crédit non accordé":"motif_credit_non_accordee",
             "Notification":"notification",
             "Référence si notifié":"reference_si_notifiee",
             "Date de notification":"date_notification",
@@ -1468,22 +1469,22 @@ def import_excel():
             "NPI": "npi",
             "Contact": "adresse_contact",
             "Filière": "filiere",
-            "Maillon / type crédit": "maillon_type_credit",
+            "Type crédits": "maillon_type_credit",
             "Montant sollicité": "credit_solicite",
-            "Montant accorde": "credit_accorde",
-            "Dates de décaissement": "date_decaissement",
+            "Montant accordé": "credit_accorde",
+            "Date de décaissement": "date_decaissement",
             "Noms des bénéficiaires": "nom_beneficiaire",
             "Nombre de bénéficiaire homme": "nb_beneficiaires_hommes",
             "Nombre de bénéficiaire femme": "nb_beneficiaires_femmes",
             "Total bénéficiaire": "total_beneficiaires",
-            "Durées": "duree",
+            "Durée": "duree",
             "Différé (mois)": "differe_mois",
-            "Dates premières échéances": "date_premiere_echeance",
-            "Dates dernières échéances": "date_derniere_echeance",
+            "Date première échéance": "date_premiere_echeance",
+            "Date dernière échéance": "date_derniere_echeance",
             "Périodicité de remboursement": "periodicite_remboursement",
             "Observations": "observations",
             "Rang/Cycles": "rang_cycle",
-            "Chiffres d'Affaires annuel": "chiffre_affaires_annuel"
+            "Chiffre d'Affaire annuel": "chiffre_affaires_annuel"
         }
 
         # 2️⃣ Déterminer le type de fichier depuis la session
@@ -1504,9 +1505,9 @@ def import_excel():
             type_fichier = result[0]
 
         # 3️⃣ Choisir le mapping correspondant
-        if type_fichier == "fichier1":
+        if type_fichier == "fichier 1":
             column_mapping = mapping_fichier1
-        elif type_fichier == "fichier2":
+        elif type_fichier == "Fichier 2":
             column_mapping = mapping_fichier2
         else:
             return jsonify({"error": f"Type de fichier inconnu : {type_fichier}"}), 400
@@ -1543,14 +1544,16 @@ def import_excel():
                 # Insertion promoteur
                 if "nom_promoteur" in row_dict and "denomination_entite" in row_dict:
                     cur.execute("""
-                        INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (nom_promoteur, nom_entite) DO NOTHING
+                        INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique, adresse_contact)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (nom_promoteur, adresse_contact) DO NOTHING
                     """, (
                         row_dict.get("nom_promoteur"),
                         row_dict.get("denomination_entite"),
                         row_dict.get("sexe_promoteur"),
-                        row_dict.get("statut_juridique")
+                        row_dict.get("statut_juridique"),
+                         row_dict.get("adresse_contact")
+
                     ))
 
                 # Insertion PSF
@@ -1587,7 +1590,7 @@ def import_excel():
                 if not id_commune:
                     raise ValueError(f"Commune non trouvée pour : '{row_dict.get('commune')}'")
 
-                # Insertion projet_financement
+                # Insertion credit_facilite 
                 projet_data = {
                     "date_comite_validation": row_dict.get("date_comite_validation"),
                     "id_psf": id_psf,
@@ -1606,7 +1609,7 @@ def import_excel():
                     "created_by": created_by
                 }
                 cur.execute(f"""
-                    INSERT INTO projet_financement (
+                    INSERT INTO credit_facilite (
                         {', '.join(projet_data.keys())}
                     ) VALUES (
                         {', '.join(f"%({k})s" for k in projet_data.keys())}
@@ -1647,4 +1650,132 @@ def import_excel():
 
     finally:
         if conn:
+            conn.close()
+
+
+
+
+
+# -----------------------------
+# Route d'insertion et récupération des types de projet
+# -----------------------------
+
+@auth_bp.route('/type_projets', methods=['GET'])
+@login_required
+def get_type_projets():
+    try:
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_type_projet, nom_facilite, type_fichier FROM type_projet")
+            rows = cur.fetchall()
+
+            type_projets = [
+                {'id_type_projet': row[0], 'nom_facilite': row[1], 'type_fichier': row[2]} for row in rows
+            ]
+
+        return jsonify(type_projets), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+# Route de sélection du type de projet avant importation des données
+@auth_bp.route('/selection_type_projet', methods=['POST'])
+@login_required
+def selection_type_projet():
+    try:
+        data = request.get_json()
+        id_type_projet = data.get('id_type_projet')
+
+        if not id_type_projet:
+            return jsonify({'error': 'id_type_projet manquant.'}), 400
+
+        # Enregistrement dans la session utilisateur
+        session['id_type_projet'] = id_type_projet
+
+        return jsonify({'message': f'Type de projet sélectionné : {id_type_projet}'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/types_projets', methods=['GET', 'POST'])
+@login_required
+def handle_type_projets():
+    if request.method == 'GET':
+        try:
+            conn = get_connection()
+            if conn is None:
+                return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id_type_projet, nom_facilite, type_fichier, date_creation, auteur 
+                    FROM type_projet
+                """)
+                rows = cur.fetchall()
+
+                type_projets = [
+                    {
+                        'id_type_projet': row[0],
+                        'nom_facilite': row[1],
+                        'type_fichier': row[2],
+                        'date_creation': row[3].strftime('%Y-%m-%d') if row[3] else None,
+                        'auteur': row[4] if row[4] else 'N/A'
+                    } for row in rows
+                ]
+
+            return jsonify(type_projets), 200
+
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+        finally:
+            if 'conn' in locals() and conn:
+                conn.close()
+
+    elif request.method == 'POST':
+        return add_type_projet()
+
+
+@login_required
+def add_type_projet():
+    data = request.get_json()
+    nom_facilite = data.get('nom_facilite')
+    type_fichier = data.get('type_fichier')  # Nouveau champ
+
+    if not nom_facilite or not type_fichier:
+        return jsonify({'error': 'Les champs nom_facilite et type_fichier sont obligatoires.'}), 400
+
+    auteur = f"{current_user.nom} {current_user.prenom}"
+
+    try:
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO type_projet (nom_facilite, type_fichier, auteur) VALUES (%s, %s, %s)",
+                (nom_facilite, type_fichier, auteur)
+            )
+            conn.commit()
+
+        return jsonify({'message': 'Type de projet ajouté avec succès.'}), 201
+
+    except UniqueViolation:
+        return jsonify({'error': 'Type de projet déjà existant.'}), 409
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
             conn.close()

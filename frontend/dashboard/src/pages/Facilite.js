@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 
 function Facilite() {
   const [nomFacilite, setNomFacilite] = useState('');
+  const [typeFichier, setTypeFichier] = useState(''); // ✅ Nouveau champ
   const [message, setMessage] = useState('');
-  const [success, setSuccess] = useState(null); // ✅ true = succès, false = erreur
+  const [success, setSuccess] = useState(null);
   const [facilites, setFacilites] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,8 +34,8 @@ function Facilite() {
     setMessage('');
     setSuccess(null);
 
-    if (!nomFacilite.trim()) {
-      setMessage('Merci de remplir le champ nom de la facilité');
+    if (!nomFacilite.trim() || !typeFichier.trim()) {
+      setMessage('Merci de remplir le nom de la facilité et le type de fichier');
       setSuccess(false);
       return;
     }
@@ -44,7 +45,10 @@ function Facilite() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ nom_facilite: nomFacilite.trim() }),
+        body: JSON.stringify({
+          nom_facilite: nomFacilite.trim(),
+          type_fichier: typeFichier.trim(), // ✅ envoyé au backend
+        }),
       });
 
       const data = await res.json();
@@ -56,6 +60,7 @@ function Facilite() {
       }
 
       setNomFacilite('');
+      setTypeFichier(''); // Réinitialisation du champ
       setMessage('✅ Facilité ajoutée avec succès !');
       setSuccess(true);
       fetchFacilites();
@@ -91,7 +96,7 @@ function Facilite() {
       } else {
         setMessage('✅ Facilité supprimée avec succès !');
         setSuccess(true);
-        fetchFacilites(); // recharge la liste
+        fetchFacilites();
       }
     } catch (error) {
       setMessage('Erreur réseau lors de la suppression.');
@@ -107,18 +112,27 @@ function Facilite() {
 
   return (
     <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
-      <h1 className="text-5xl font-extrabold text-green-700 mb-12">Nos Facilités</h1>
+      <h1 className="text-5xl font-extrabold text-green-700 mb-12">Nos Types de Projet</h1>
 
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8 mb-12">
-        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Ajouter une facilité</h2>
+        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Ajouter un type de projet</h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col space-y-6" noValidate>
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4" noValidate>
           <input
             type="text"
-            placeholder="Nom de la facilité"
+            placeholder="Nom du type de projet"
             className="border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
             value={nomFacilite}
             onChange={(e) => setNomFacilite(e.target.value)}
+            disabled={loading}
+          />
+
+          <input
+            type="text"
+            placeholder="Type de fichier (ex: Fichier 1 / Fichier 2)"
+            className="border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
+            value={typeFichier}
+            onChange={(e) => setTypeFichier(e.target.value)}
             disabled={loading}
           />
 
@@ -132,9 +146,9 @@ function Facilite() {
 
           {message && (
             <div
-              className={`text-center text-xl ${
-                success === true ? 'text-green-700' : ''
-              } ${success === false ? 'text-red-700' : ''}`}
+              className={`text-center text-xl ${success === true ? 'text-green-700' : ''} ${
+                success === false ? 'text-red-700' : ''
+              }`}
             >
               {message}
             </div>
@@ -143,12 +157,12 @@ function Facilite() {
       </div>
 
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Liste des facilités</h2>
+        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Liste des types de projet</h2>
 
         {loading ? (
           <p className="text-center text-gray-500">Chargement...</p>
         ) : facilites.length === 0 ? (
-          <p className="text-center text-gray-500">Aucune facilité disponible pour le moment.</p>
+          <p className="text-center text-gray-500">Aucun type de projet disponible pour le moment.</p>
         ) : (
           <ul className="space-y-4">
             {facilites.map((f) => (
@@ -159,7 +173,7 @@ function Facilite() {
                 <div>
                   <p className="font-semibold text-gray-800">{f.nom_facilite}</p>
                   <p className="text-sm text-gray-500">
-                    Auteur : {f.auteur} — Créé le {f.date_creation || 'N/A'}
+                    Type fichier : {f.type_fichier} — Auteur : {f.auteur} — Créé le {f.date_creation || 'N/A'}
                   </p>
                 </div>
 
