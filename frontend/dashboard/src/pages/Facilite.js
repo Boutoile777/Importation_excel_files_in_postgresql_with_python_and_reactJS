@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 function Facilite() {
   const [nomFacilite, setNomFacilite] = useState('');
-  const [typeFichier, setTypeFichier] = useState(''); // ✅ Nouveau champ
-  const [message, setMessage] = useState('');
-  const [success, setSuccess] = useState(null);
+  const [typeFichier, setTypeFichier] = useState('');
+  const [formMessage, setFormMessage] = useState('');
+  const [formSuccess, setFormSuccess] = useState(null);
+  const [listMessage, setListMessage] = useState('');
+  const [listSuccess, setListSuccess] = useState(null);
   const [facilites, setFacilites] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -18,8 +20,8 @@ function Facilite() {
       const data = await res.json();
       setFacilites(data);
     } catch (error) {
-      setMessage(error.message);
-      setSuccess(false);
+      setListMessage(error.message);
+      setListSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -31,12 +33,12 @@ function Facilite() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setSuccess(null);
+    setFormMessage('');
+    setFormSuccess(null);
 
     if (!nomFacilite.trim() || !typeFichier.trim()) {
-      setMessage('Merci de remplir le nom de la facilité et le type de fichier');
-      setSuccess(false);
+      setFormMessage('Merci de remplir le nom de la facilité et le type de fichier');
+      setFormSuccess(false);
       return;
     }
 
@@ -47,30 +49,30 @@ function Facilite() {
         credentials: 'include',
         body: JSON.stringify({
           nom_facilite: nomFacilite.trim(),
-          type_fichier: typeFichier.trim(), // ✅ envoyé au backend
+          type_fichier: typeFichier.trim(),
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.error || "Erreur lors de l'ajout de la facilité");
-        setSuccess(false);
+        setFormMessage(data.error || "Erreur lors de l'ajout de la facilité");
+        setFormSuccess(false);
         return;
       }
 
       setNomFacilite('');
-      setTypeFichier(''); // Réinitialisation du champ
-      setMessage('✅ Facilité ajoutée avec succès !');
-      setSuccess(true);
+      setTypeFichier('');
+      setFormMessage('✅ Facilité ajoutée avec succès !');
+      setFormSuccess(true);
       fetchFacilites();
     } catch (error) {
-      setMessage('Erreur réseau : impossible de joindre le serveur');
-      setSuccess(false);
+      setFormMessage('Erreur réseau : impossible de joindre le serveur');
+      setFormSuccess(false);
     } finally {
       setTimeout(() => {
-        setMessage('');
-        setSuccess(null);
+        setFormMessage('');
+        setFormSuccess(null);
       }, 4000);
     }
   };
@@ -78,8 +80,8 @@ function Facilite() {
   const handleDelete = async (id) => {
     if (!window.confirm('Voulez-vous vraiment supprimer cette facilité ?')) return;
 
-    setMessage('');
-    setSuccess(null);
+    setListMessage('');
+    setListSuccess(null);
     setLoading(true);
 
     try {
@@ -91,21 +93,21 @@ function Facilite() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.error || 'Erreur lors de la suppression');
-        setSuccess(false);
+        setListMessage(data.error || 'Erreur lors de la suppression');
+        setListSuccess(false);
       } else {
-        setMessage('✅ Facilité supprimée avec succès !');
-        setSuccess(true);
+        setListMessage('✅ Facilité supprimée avec succès !');
+        setListSuccess(true);
         fetchFacilites();
       }
     } catch (error) {
-      setMessage('Erreur réseau lors de la suppression.');
-      setSuccess(false);
+      setListMessage('Erreur réseau lors de la suppression.');
+      setListSuccess(false);
     } finally {
       setLoading(false);
       setTimeout(() => {
-        setMessage('');
-        setSuccess(null);
+        setListMessage('');
+        setListSuccess(null);
       }, 4000);
     }
   };
@@ -114,8 +116,11 @@ function Facilite() {
     <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
       <h1 className="text-5xl font-extrabold text-green-700 mb-12">Nos Types de Projet</h1>
 
+      {/* Formulaire d'ajout */}
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8 mb-12">
-        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Ajouter un type de projet</h2>
+        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">
+          Ajouter un type de projet
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4" noValidate>
           <input
@@ -127,14 +132,17 @@ function Facilite() {
             disabled={loading}
           />
 
-          <input
-            type="text"
-            placeholder="Type de fichier (ex: Fichier 1 / Fichier 2)"
+          {/* Menu déroulant pour type_fichier */}
+          <select
             className="border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
             value={typeFichier}
             onChange={(e) => setTypeFichier(e.target.value)}
             disabled={loading}
-          />
+          >
+            <option value="">-- Sélectionnez le type de fichier --</option>
+            <option value="FICHIER 1">FICHIER 1</option>
+            <option value="FICHIER 2">FICHIER 2</option>
+          </select>
 
           <button
             type="submit"
@@ -144,20 +152,22 @@ function Facilite() {
             {loading ? 'Traitement...' : 'Ajouter'}
           </button>
 
-          {message && (
+          {/* Message seulement pour AJOUT */}
+          {formMessage && formSuccess !== null && (
             <div
-              className={`text-center text-xl ${success === true ? 'text-green-700' : ''} ${
-                success === false ? 'text-red-700' : ''
-              }`}
+              className={`text-center text-xl ${formSuccess ? 'text-green-700' : 'text-red-700'}`}
             >
-              {message}
+              {formMessage}
             </div>
           )}
         </form>
       </div>
 
+      {/* Liste */}
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">Liste des types de projet</h2>
+        <h2 className="text-3xl font-semibold text-green-700 mb-6 text-center">
+          Liste des types de projet
+        </h2>
 
         {loading ? (
           <p className="text-center text-gray-500">Chargement...</p>
@@ -173,7 +183,8 @@ function Facilite() {
                 <div>
                   <p className="font-semibold text-gray-800">{f.nom_facilite}</p>
                   <p className="text-sm text-gray-500">
-                    Type fichier : {f.type_fichier} — Auteur : {f.auteur} — Créé le {f.date_creation || 'N/A'}
+                    Type fichier : {f.type_fichier} — Auteur : {f.auteur} — Créé le{' '}
+                    {f.date_creation || 'N/A'}
                   </p>
                 </div>
 
@@ -190,6 +201,17 @@ function Facilite() {
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Message seulement pour LISTE */}
+        {listMessage && (
+          <div
+            className={`mt-6 text-center text-lg ${
+              listSuccess ? 'text-green-700' : 'text-red-700'
+            }`}
+          >
+            {listMessage}
+          </div>
         )}
       </div>
     </div>

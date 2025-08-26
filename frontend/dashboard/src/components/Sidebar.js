@@ -133,6 +133,15 @@ function Sidebar({ isOpen, setIsOpen }) {
             </NavLink>
           // className="inline-block mr-2"
         )}
+         {/* Exemple simplifié */}
+        
+
+        {/* Le lien pour voir les graphismes */}
+        {user.admin && (
+          <NavLink to="/dashboard/Graphismes" className={linkClasses}>
+            <FiTool /> Graphismes
+          </NavLink>
+        )}
 
 
         {/* Mon compte visible par tous */}

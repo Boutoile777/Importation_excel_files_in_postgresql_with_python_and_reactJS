@@ -21,6 +21,8 @@ import Ex from './pages/Ex';
 import ProjetsParFacilite from './pages/ProjetsParFacilite';
 import ToutesOperationsPage from './pages/ToutesOperationsPage';
 import ListeUsersStandard from './pages/ListeUsersStandard';
+import Graphiques from './pages/Graphiques';
+
 
 // Composant pour protéger les routes privées
 const PrivateRoute = () => {
@@ -83,6 +85,8 @@ function App() {
                 <Route path="/dashboard/historique" element={<Historique />} />
                 <Route path="/dashboard/liste-utilisateurs" element={<ListeUsersStandard />} />
                 <Route path="/dashboard/facilite" element={<Facilite />} />
+                <Route path="/dashboard/Graphismes" element={<Graphiques />} />
+
                 
               </Route>
 

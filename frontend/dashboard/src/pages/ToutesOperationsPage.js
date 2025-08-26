@@ -13,10 +13,10 @@ const customStyles = {
       paddingRight: '24px',
       fontWeight: 'bold',
       fontSize: '16px',
-      whiteSpace: 'normal',    // autoriser retour à la ligne
-      wordWrap: 'break-word',  // couper les mots si nécessaire
-      lineHeight: '1.2',       // ajuster la hauteur de ligne pour lisibilité
-      minHeight: '48px',       // ajuster la hauteur pour que ça tienne bien
+      whiteSpace: 'normal',
+      wordWrap: 'break-word',
+      lineHeight: '1.2',
+      minHeight: '48px',
     },
   },
   cells: {
@@ -27,11 +27,9 @@ const customStyles = {
       whiteSpace: 'normal',
       wordWrap: 'break-word',
       lineHeight: '1.2',
-
     },
   },
 };
-
 
 const colonnes = [
   { name: 'Date Comité', selector: row => row.date_comite_validation, sortable: true, minWidth: '180px' },
@@ -59,6 +57,18 @@ function ProjetsFinancementTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ✅ Ajout des filtres colonne par colonne
+  const [filters, setFilters] = useState({
+    nom_commune: '',
+    nom_promoteur: '',
+    nom_type_projet: '',
+    intitule_projet: '',
+  });
+
+  const handleFilterChange = (column, value) => {
+    setFilters(prev => ({ ...prev, [column]: value }));
+  };
+
   useEffect(() => {
     fetch('http://localhost:5000/auth/projets_financement', {
       method: 'GET',
@@ -79,21 +89,38 @@ function ProjetsFinancementTable() {
       });
   }, []);
 
+  // ✅ Application des filtres + recherche globale
   useEffect(() => {
-    if (!searchText) {
-      setFilteredData(data);
-      return;
+    let filtered = data;
+
+    if (filters.nom_commune) {
+      filtered = filtered.filter(row => row.nom_commune === filters.nom_commune);
     }
-    const lowercasedFilter = searchText.toLowerCase();
-    const filtered = data.filter(item =>
-      Object.values(item).some(value =>
-        value && typeof value === 'string'
-          ? value.toLowerCase().includes(lowercasedFilter)
-          : value != null && value.toString().toLowerCase().includes(lowercasedFilter)
-      )
-    );
+    if (filters.nom_promoteur) {
+      filtered = filtered.filter(row =>
+        row.nom_promoteur?.toLowerCase().includes(filters.nom_promoteur.toLowerCase())
+      );
+    }
+    if (filters.nom_type_projet) {
+      filtered = filtered.filter(row => row.nom_type_projet === filters.nom_type_projet);
+    }
+    if (filters.intitule_projet) {
+      filtered = filtered.filter(row =>
+        row.intitule_projet?.toLowerCase().includes(filters.intitule_projet.toLowerCase())
+      );
+    }
+
+    if (searchText) {
+      const lowercasedFilter = searchText.toLowerCase();
+      filtered = filtered.filter(item =>
+        Object.values(item).some(value =>
+          value && value.toString().toLowerCase().includes(lowercasedFilter)
+        )
+      );
+    }
+
     setFilteredData(filtered);
-  }, [searchText, data]);
+  }, [data, filters, searchText]);
 
   const exportExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(filteredData);
@@ -121,11 +148,10 @@ function ProjetsFinancementTable() {
       'Promoteur': null,
       'Statut Dossier': 'statut_dossier',
       'Crédit Accordé Statut': 'credit_accorde_statut',
-      'Type projet': 'nom_type_projet',  // attention à la casse aussi !
+      'Type projet': 'nom_type_projet',
       'Créé le': 'created_at',
       'Créé par': 'created_by',
     };
-
 
     const tableRows = filteredData.map(row =>
       colonnes.map(col => {
@@ -153,13 +179,10 @@ function ProjetsFinancementTable() {
 
     doc.setFontSize(14);
     doc.text('Projets de Financement', 14, 15);
-    if(logo) {
+    if (logo) {
       doc.addImage(logo, 'PNG', 250, 5, 40, 20);
     }
 
-
-
-    
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -181,15 +204,6 @@ function ProjetsFinancementTable() {
           doc.internal.pageSize.getHeight() - 10
         );
       },
-      // didParseCell: data => {
-      //   const montantCols = [2, 3, 4, 5, 6];
-      //   if (
-      //     montantCols.includes(data.column.index) &&
-      //     typeof data.cell.raw === 'number'
-      //   ) {
-      //     data.cell.text = data.cell.raw.toLocaleString();
-      //   }
-      // },
     });
 
     doc.save('projets_financement.pdf');
@@ -216,6 +230,7 @@ function ProjetsFinancementTable() {
         Projets de Financement
       </h2>
 
+      {/* 🔹 Barre de recherche + export */}
       <div className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
         <input
           type="text"
@@ -240,6 +255,82 @@ function ProjetsFinancementTable() {
         </div>
       </div>
 
+
+
+
+{/* 🔹 Section filtres élégante */}
+<div className="bg-white shadow-md rounded-lg p-4 mb-6 border border-gray-200">
+  <h3 className="text-lg font-semibold text-gray-700 mb-3">Filtres avancés</h3>
+  
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    {/* Filtre Commune */}
+    <select
+      value={filters.nom_commune}
+      onChange={e => handleFilterChange('nom_commune', e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50"
+    >
+      <option value="">Choisir une commune</option>
+      {[...new Set(data.map(item => item.nom_commune))].map(commune => (
+        <option key={commune} value={commune}>{commune}</option>
+      ))}
+    </select>
+
+    {/* Filtre Promoteur */}
+    <input
+      type="text"
+      placeholder="Insérer nom promoteur"
+      value={filters.nom_promoteur}
+      onChange={e => handleFilterChange('nom_promoteur', e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50"
+    />
+
+    {/* Filtre Type de projet */}
+    <select
+      value={filters.nom_type_projet}
+      onChange={e => handleFilterChange('nom_type_projet', e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50"
+    >
+      <option value="">Choisir un type de projet</option>
+      {[...new Set(data.map(item => item.nom_type_projet))].map(type => (
+        <option key={type} value={type}>{type}</option>
+      ))}
+    </select>
+
+    {/* Filtre Intitulé projet */}
+    <input
+      type="text"
+      placeholder="Rechercher projet ..."
+      value={filters.intitule_projet}
+      onChange={e => handleFilterChange('intitule_projet', e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50"
+    />
+  </div>
+
+  {/* 🔹 Badges de filtres actifs */}
+  <div className="flex flex-wrap gap-2 mt-4">
+    {Object.entries(filters).map(([key, value]) =>
+      value ? (
+        <span
+          key={key}
+          className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm shadow-sm"
+        >
+          {key.replace('nom_', '').replace('_projet', '').replace('_', ' ')} : {value}
+          <button
+            onClick={() => handleFilterChange(key, '')}
+            className="ml-1 text-green-700 hover:text-red-600 font-bold"
+          >
+            ✕
+          </button>
+        </span>
+      ) : null
+    )}
+  </div>
+</div>
+
+
+
+
+      {/* 🔹 Tableau */}
       <div className="overflow-x-auto">
         <DataTable
           columns={colonnes}
