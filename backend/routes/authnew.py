@@ -1523,35 +1523,41 @@ def add_type_projet():
             conn.close()
 
 
-
-
 # 1️⃣ Nombre de projets financés par département
 @auth_bp.route('/projets-par-departement', methods=['GET'])
-# @login_required
+@login_required
 def projets_par_departement():
     try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            cur.execute("""
+            query = """
                 SELECT d.nom_departement, COUNT(cf.id_projet) AS nombre_projets
                 FROM credit_facilite cf
                 JOIN commune c ON cf.id_commune = c.id_commune
                 JOIN departement d ON c.id_departement = d.id_departement
                 WHERE cf.credit_accorde IS NOT NULL AND cf.credit_accorde > 0
-                GROUP BY d.nom_departement
-                ORDER BY nombre_projets DESC;
-            """)
+            """
+            params = []
+
+            if start_date:
+                query += " AND cf.date_comite_validation >= %s::date"
+                params.append(start_date)
+            if end_date:
+                query += " AND cf.date_comite_validation <= %s::date"
+                params.append(end_date)
+
+            query += " GROUP BY d.nom_departement ORDER BY nombre_projets DESC"
+
+            cur.execute(query, tuple(params))
             rows = cur.fetchall()
 
-            result = [
-                {
-                    'departement': row[0],
-                    'nb_projets': row[1]
-                } for row in rows
-            ]
+            result = [{'departement': row[0], 'nb_projets': row[1]} for row in rows]
 
         return jsonify(result), 200
 
@@ -1563,31 +1569,41 @@ def projets_par_departement():
             conn.close()
 
 
+
 # 2️⃣ Nombre de promoteurs par filière
 @auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
-# @login_required
+@login_required
 def promoteurs_par_filiere():
     try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            cur.execute("""
-                 SELECT f.nom_filiere, COUNT(DISTINCT cf.id_promoteur) AS nb_promoteurs
+            query = """
+                SELECT f.nom_filiere, COUNT(DISTINCT cf.id_promoteur) AS nb_promoteurs
                 FROM credit_facilite cf
                 JOIN filiere f ON cf.id_filiere = f.id_filiere
-                GROUP BY f.nom_filiere
-                ORDER BY nb_promoteurs DESC;
-            """)
+                WHERE 1=1
+            """
+            params = []
+
+            if start_date:
+                query += " AND cf.date_comite_validation >= %s::date"
+                params.append(start_date)
+            if end_date:
+                query += " AND cf.date_comite_validation <= %s::date"
+                params.append(end_date)
+
+            query += " GROUP BY f.nom_filiere ORDER BY nb_promoteurs DESC"
+
+            cur.execute(query, tuple(params))
             rows = cur.fetchall()
 
-            result = [
-                {
-                    'filiere': row[0],
-                    'nb_promoteurs': row[1]
-                } for row in rows
-            ]
+            result = [{'filiere': row[0], 'nb_promoteurs': row[1]} for row in rows]
 
         return jsonify(result), 200
 
@@ -1602,30 +1618,40 @@ def promoteurs_par_filiere():
 
 # 3️⃣ Montant total des crédits par commune
 @auth_bp.route('/credits-par-commune', methods=['GET'])
-# @login_required
+@login_required
 def credits_par_commune():
     try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            cur.execute("""
+            query = """
                 SELECT c.nom_commune, SUM(cf.credit_accorde) AS montant_total
                 FROM credit_facilite cf
                 JOIN commune c ON cf.id_commune = c.id_commune
                 WHERE cf.credit_accorde IS NOT NULL
-                GROUP BY c.nom_commune
-                ORDER BY montant_total DESC;
+            """
+            params = []
 
-            """)
+            if start_date:
+                query += " AND cf.date_comite_validation >= %s::date"
+                params.append(start_date)
+            if end_date:
+                query += " AND cf.date_comite_validation <= %s::date"
+                params.append(end_date)
+
+            query += " GROUP BY c.nom_commune ORDER BY montant_total DESC"
+
+            cur.execute(query, tuple(params))
             rows = cur.fetchall()
 
             result = [
-                {
-                    'commune': row[0],
-                    'total_credits': float(row[1]) if row[1] else 0
-                } for row in rows
+                {'commune': row[0], 'total_credits': float(row[1]) if row[1] else 0}
+                for row in rows
             ]
 
         return jsonify(result), 200
