@@ -1,6 +1,5 @@
 import bcrypt
 
-from werkzeug.security import check_password_hash
 
 def hash_password(plain_password):
     salt = bcrypt.gensalt()
@@ -10,6 +9,6 @@ def hash_password(plain_password):
 def check_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-
 def verify_password(plain_password, hashed_password):
-    return check_password_hash(hashed_password, plain_password)
+    """Vérifier que le mot de passe en clair correspond au hash bcrypt"""
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))

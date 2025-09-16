@@ -5,8 +5,8 @@ function ListeUtilisateursStandard() {
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null); // id de l'user en action
 
+  // 🔄 Récupération des utilisateurs
   const fetchUtilisateurs = async () => {
     setLoading(true);
     try {
@@ -30,14 +30,14 @@ function ListeUtilisateursStandard() {
     }
   };
 
-// Fonction pour changer la permission d'un utilisateur
-const changerPermission = async (id, nouvellePermission) => {
+  // 🔧 Changement de permission
+const changerPermission = async (id, permissionActuelle) => {
+  const nouvellePermission = permissionActuelle === 'oui' ? 'non' : 'oui';
+
   try {
     const res = await fetch(`http://localhost:5000/auth/changer_permission/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ permission: nouvellePermission }),
     });
@@ -48,24 +48,10 @@ const changerPermission = async (id, nouvellePermission) => {
     }
 
     const data = await res.json();
-    setMessage(data.message);
-    setSuccess(true);
-
-    // 🔄 Mise à jour locale de l’état
-    setUtilisateurs(prev =>
-      prev.map(u =>
-        u.id === id ? { ...u, permission: nouvellePermission } : u
-      )
-    );
-
-  } catch (error) {
-    setMessage(error.message);
-    setSuccess(false);
-  } finally {
-    setTimeout(() => {
-      setMessage('');
-      setSuccess(null);
-    }, 4000);
+    // mise à jour locale
+    setUtilisateurs(prev => prev.map(u => u.id === id ? { ...u, permission: nouvellePermission } : u));
+  } catch (err) {
+    console.error(err.message);
   }
 };
 
@@ -76,7 +62,7 @@ const changerPermission = async (id, nouvellePermission) => {
 
   return (
     <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
-      <h1 className="text-5xl font-extrabold text-green-700 mb-12">Utilisateurs Standards</h1>
+      <h1 className="text-5xl font-extrabold text-green-700 mb-12">Gestion des Utilisateurs</h1>
 
       <div className="w-full max-w-4xl bg-white rounded-lg shadow-md p-8">
         {loading ? (
@@ -88,28 +74,21 @@ const changerPermission = async (id, nouvellePermission) => {
             {utilisateurs.map(u => (
               <li key={u.id} className="border border-gray-300 rounded-md p-4 flex justify-between items-center">
                 <div>
-                  <p className="font-semibold text-gray-800">
-                    {u.nom} {u.prenom}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Créé le {u.date_creation || 'N/A'}
-                  </p>
-                  <p className={`text-sm font-semibold ${u.permission === 'bloqué' ? 'text-red-600' : 'text-green-600'}`}>
-                    État : {u.permission}
+                  <p className="font-semibold text-gray-800">{u.nom} {u.prenom}</p>
+                  <p className="text-sm text-gray-500">Créé le {u.date_creation || 'N/A'}</p>
+                  <p className={`text-sm font-semibold ${u.permission === 'non' ? 'text-red-600' : 'text-green-600'}`}>
+                    Permission: {u.permission === 'oui' ? 'Oui' : 'Non'}
                   </p>
                 </div>
                 <button
                   className={`px-4 py-2 rounded font-semibold text-white ${
-                    u.permission === 'bloqué' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                    u.permission === 'non' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
                   }`}
-                  onClick={() =>
-                    changerPermission(u.id, u.permission === 'bloqué' ? 'accepté' : 'bloqué')
-                  }
+                  onClick={() => changerPermission(u.id, u.permission)}
                 >
-                  {u.permission === 'bloqué' ? 'Débloquer' : 'Bloquer'}
+                  {u.permission === 'non' ? 'Débloquer' : 'Bloquer'}
                 </button>
               </li>
-
             ))}
           </ul>
         )}

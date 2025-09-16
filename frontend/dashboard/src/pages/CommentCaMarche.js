@@ -106,23 +106,38 @@ function CommentCaMarche() {
         transition={{ duration: 0.6 }}
         className="max-w-4xl mx-auto space-y-10 mt-16"
       >
-        {/* Nomenclature */}
-        <section className="bg-green-50 border-l-4 border-green-700 p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-bold text-green-800 mb-3 flex items-center gap-2">
-            🗂️ Nomenclature du fichier attendu
-          </h2>
-          <p className="text-gray-700 text-base leading-relaxed mb-4">
-            Avant l’importation, veuillez vous assurer que votre fichier Excel respecte le modèle défini.
-            Vous pouvez télécharger un exemple de fichier correctement structuré ci-dessous pour éviter toute erreur.
-          </p>
+      
+       {/* Nomenclature */}
+
+      <section className="bg-green-50 border-l-4 border-green-700 p-6 rounded-xl shadow-md">
+        <h2 className="text-xl font-bold text-green-800 mb-3 flex items-center gap-2">
+          🗂️ Nomenclature du fichier attendu
+        </h2>
+        <p className="text-gray-700 text-base leading-relaxed mb-4">
+          Avant l’importation, veuillez vous assurer que votre fichier Excel respecte le modèle défini.
+          Vous pouvez télécharger un exemple de fichier correctement structuré ci-dessous pour éviter toute erreur.
+        </p>
+
+        {/* Boutons côte à côte */}
+        <div className="flex flex-wrap gap-4">
           <a
             href="/asset/classeur.xlsx"
             download
             className="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-medium shadow hover:bg-green-700 transition duration-300"
           >
-            📥 Télécharger le modèle Excel
+            📥 Télécharger le modèle Excel 1
           </a>
-        </section>
+
+          <a
+            href="/asset/class.xlsx"
+            download
+            className="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-medium shadow hover:bg-green-700 transition duration-300"
+          >
+            📥 Télécharger le modèle Excel 2
+          </a>
+        </div>
+      </section>
+
 
         {/* Facilités disponibles */}
         <section className="bg-blue-50 border-l-4 border-blue-700 p-6 rounded-xl shadow-md">

@@ -139,7 +139,7 @@ function Sidebar({ isOpen, setIsOpen }) {
         {/* Le lien pour voir les graphismes */}
         {user.admin && (
           <NavLink to="/dashboard/Graphismes" className={linkClasses}>
-            <FiTool /> Graphismes
+            <FiTool /> Graphiques
           </NavLink>
         )}
 

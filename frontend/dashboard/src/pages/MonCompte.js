@@ -163,51 +163,57 @@ function MonCompte() {
     );
   };
 
-  // --- Gestion du changement de mot de passe ---
-  const handleSubmitPassword = async () => {
-    setPasswordError('');
-    setPasswordSuccess('');
+// --- Gestion du changement de mot de passe ---
+const handleSubmitPassword = async () => {
+  setPasswordError('');
+  setPasswordSuccess('');
 
-    if (!passwords.current || !passwords.new || !passwords.confirm) {
-      setPasswordError('Tous les champs sont requis.');
+  // Vérifications côté frontend
+  if (!passwords.current || !passwords.new || !passwords.confirm) {
+    setPasswordError('Tous les champs sont requis.');
+    return;
+  }
+  if (passwords.new !== passwords.confirm) {
+    setPasswordError('La confirmation ne correspond pas au nouveau mot de passe.');
+    return;
+  }
+  if (passwords.new.length < 6) {
+    setPasswordError('Le nouveau mot de passe doit contenir au moins 6 caractères.');
+    return;
+  }
+
+  try {
+    // Appel sécurisé à la route Flask
+    const response = await fetch('http://localhost:5000/auth/change-password-first-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // nécessaire pour Flask-Login
+      body: JSON.stringify({
+        current_password: passwords.current,
+        new_password: passwords.new,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      // Mot de passe actuel incorrect ou autre erreur
+      setPasswordError(result.error || 'Erreur lors de la mise à jour du mot de passe.');
       return;
     }
-    if (passwords.new !== passwords.confirm) {
-      setPasswordError('La confirmation ne correspond pas au nouveau mot de passe.');
-      return;
-    }
-    if (passwords.new.length < 6) {
-      setPasswordError('Le nouveau mot de passe doit contenir au moins 6 caractères.');
-      return;
-    }
 
-    try {
-      const response = await fetch('/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          current_password: passwords.current,
-          new_password: passwords.new,
-        }),
-      });
+    // Succès
+    setPasswordSuccess('✅ Mot de passe mis à jour avec succès.');
+    setPasswords({ current: '', new: '', confirm: '' });
+    setShowPasswordForm(false);
+
+  } catch (err) {
+    setPasswordError('Erreur de connexion au serveur.');
+    console.error(err);
+  }
+};
 
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la mise à jour du mot de passe.');
-      }
-
-      setPasswordSuccess('✅ Mot de passe mis à jour avec succès.');
-      setPasswords({ current: '', new: '', confirm: '' });
-      setTimeout(() => setPasswordSuccess(''), 4000);
-      setShowPasswordForm(false);
-    } catch (err) {
-      setPasswordError(err.message);
-      setTimeout(() => setPasswordError(''), 4000);
-    }
-  };
 
   return (
     <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">

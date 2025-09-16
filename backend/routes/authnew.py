@@ -14,8 +14,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 from flask_mail import Message
 from extensions import mail  
-
-
+from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
 
@@ -156,7 +155,7 @@ def get_utilisateurs_standard():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT nom, prenom, date_creation
+                SELECT id, nom, prenom, permission, date_creation
                 FROM utilisateur
                 WHERE admin = FALSE
                 ORDER BY date_creation DESC
@@ -164,17 +163,18 @@ def get_utilisateurs_standard():
             rows = cur.fetchall()
 
             resultat = []
-            for nom, prenom, date_creation in rows:
+            for id_, nom, prenom, permission, date_creation in rows:
                 resultat.append({
+                    'id': id_,
                     'nom': nom,
                     'prenom': prenom,
-                    'date_creation': date_creation.strftime('%d-%m-%Y ') if date_creation else None
+                    'permission': permission,
+                    'date_creation': date_creation.strftime('%d-%m-%Y') if date_creation else None
                 })
 
         return jsonify(resultat), 200
 
     except Exception as e:
-        # log l'erreur côté serveur si tu veux (print ou logger)
         return jsonify({'error': str(e)}), 500
 
     finally:
@@ -213,7 +213,7 @@ def signin():
         user_id, hashed_password, nom, prenom, admin, mot_temp, permission = user
 
         # 🔒 Vérifier si l'utilisateur est bloqué
-        if permission and permission.lower() == 'bloqué':
+        if permission and permission.lower() == 'non':
             return jsonify({'error': 'Votre compte a été bloqué. Contactez un administrateur.'}), 403
 
         if not check_password(mot_de_passe, hashed_password):
@@ -363,34 +363,51 @@ def update_photo():
 
 # Mofification du mot de passe à la première connexion
 
-
 @auth_bp.route('/change-password-first-login', methods=['POST'])
 @login_required
 def change_password_first_login():
+    """
+    Permet à un utilisateur en première connexion de changer son mot de passe.
+    Vérifie le mot de passe actuel avant de mettre à jour.
+    """
     try:
         data = request.json
+        current_password = data.get('current_password')
         new_password = data.get('new_password')
 
-        if not new_password:
-            return jsonify({'error': 'Nouveau mot de passe requis.'}), 400
+        if not current_password or not new_password:
+            return jsonify({'error': 'Mot de passe actuel et nouveau mot de passe requis.'}), 400
 
-        # Hash du nouveau mot de passe
-        hashed = hash_password(new_password)
-
+        # Connexion à la base
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            # Mise à jour mot de passe + reset flag
+            # Récupérer le hash du mot de passe actuel
+            cur.execute("SELECT mot_de_passe FROM utilisateur WHERE id = %s", (current_user.id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'error': 'Utilisateur introuvable.'}), 404
+
+            hashed_password_db = row[0]
+
+            # Vérifier que le mot de passe actuel est correct
+            if not verify_password(current_password, hashed_password_db):
+                return jsonify({'error': 'Mot de passe actuel incorrect.'}), 401
+
+            # Hasher le nouveau mot de passe
+            new_hashed = hash_password(new_password)
+
+            # Mise à jour du mot de passe et reset du flag temporaire
             cur.execute(
                 """
                 UPDATE utilisateur
                 SET mot_de_passe = %s,
-                mot_de_passe_temporaire = false
+                    mot_de_passe_temporaire = false
                 WHERE id = %s
                 """,
-                (hashed, current_user.id)
+                (new_hashed, current_user.id)
             )
             conn.commit()
 
@@ -507,6 +524,51 @@ def reset_password(token):
 # Route de gestion des users par l'admin (bloqué ou débloqué)
 # -----------------------------
 
+# @auth_bp.route('/changer_permission/<int:user_id>', methods=['PUT'])
+# @login_required
+# @admin_required
+# def changer_permission(user_id):
+#     try:
+#         data = request.json
+#         nouvelle_permission = data.get('permission')
+
+#         if nouvelle_permission not in ['accepté', 'bloqué']:
+#             return jsonify({'error': 'Permission invalide. Doit être "accepté" ou "bloqué".'}), 400
+
+#         conn = get_connection()
+#         if conn is None:
+#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+#         with conn.cursor() as cur:
+#             # Vérifier que l'utilisateur existe
+#             cur.execute("SELECT id FROM utilisateur WHERE id = %s", (user_id,))
+#             if not cur.fetchone():
+#                 return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+
+#             # Mettre à jour la permission
+#             cur.execute("""
+#                 UPDATE utilisateur
+#                 SET permission = %s
+#                 WHERE id = %s
+#             """, (nouvelle_permission, user_id))
+#             conn.commit()
+
+#         return jsonify({'message': f'Permission mise à jour en "{nouvelle_permission}" pour l\'utilisateur {user_id}.'}), 200
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+#     finally:
+#         if 'conn' in locals() and conn:
+#             conn.close()
+
+
+
+
+
+# -----------------------------
+# Route de gestion des users par l'admin (permission "oui" ou "non")
+# -----------------------------
 @auth_bp.route('/changer_permission/<int:user_id>', methods=['PUT'])
 @login_required
 @admin_required
@@ -515,8 +577,9 @@ def changer_permission(user_id):
         data = request.json
         nouvelle_permission = data.get('permission')
 
-        if nouvelle_permission not in ['accepté', 'bloqué']:
-            return jsonify({'error': 'Permission invalide. Doit être "accepté" ou "bloqué".'}), 400
+        # Vérification que la permission est valide
+        if nouvelle_permission not in ['oui', 'non']:
+            return jsonify({'error': 'Permission invalide. Doit être "oui" ou "non".'}), 400
 
         conn = get_connection()
         if conn is None:
@@ -536,7 +599,9 @@ def changer_permission(user_id):
             """, (nouvelle_permission, user_id))
             conn.commit()
 
-        return jsonify({'message': f'Permission mise à jour en "{nouvelle_permission}" pour l\'utilisateur {user_id}.'}), 200
+        return jsonify({
+            'message': f'Permission mise à jour en "{nouvelle_permission}" pour l\'utilisateur {user_id}.'
+        }), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -544,9 +609,6 @@ def changer_permission(user_id):
     finally:
         if 'conn' in locals() and conn:
             conn.close()
-
-
-
 
 
 
@@ -819,281 +881,6 @@ def change_password():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @auth_bp.route("/import_excel", methods=["POST"])
-# @login_required
-# def import_excel():
-#     conn = None
-#     try:
-#         if 'file' not in request.files:
-#             return jsonify({"error": "Aucun fichier fourni"}), 400
-
-#         file = request.files['file']
-#         nom_fichier = file.filename if file else None
-
-#         # 1️⃣ Lecture du fichier Excel
-#         df = pd.read_excel(file)
-#         df = df.replace({np.nan: None})
-
-#         # 2️⃣ Mapping des noms Excel → noms de colonnes en base
-#         column_mapping = {
-#             "Date comité": "date_comite_validation",
-#             "N° dossier": "numero",
-#             "PDA": "pda",
-#             "Nom PSF": "psf",
-#             "Département": "departement",
-#             "Commune": "commune",
-#             "Intitulé du projet": "intitule_projet",
-#             "Nom de l'entité": "denomination_entite",
-#             "Nom du promoteur": "nom_promoteur",
-#             "Sexe": "sexe_promoteur",
-#             "Statut juridique": "statut_juridique",
-#             "Adresse": "adresse_contact",
-#             "Filière": "filiere",
-#             "Maillon / type crédit": "maillon_type_credit",
-#             "Coût total": "cout_total_projet",
-#             "Crédit sollicité": "credit_solicite",
-#             "Crédit accordé": "credit_accorde",
-#             "Refinancement": "refinancement_accorde",
-#             "Statut crédit accordé": "credit_accorde_statut",
-#             "Total financement": "total_financement",
-#             "Statut dossier": "statut_dossier"
-#         }
-
-#         # Renommer les colonnes selon le mapping
-#         df.rename(columns=column_mapping, inplace=True)
-
-#         # 3️⃣ Vérifier que toutes les colonnes attendues existent après renommage
-#         required_columns = list(column_mapping.values())
-#         missing_cols = [col for col in required_columns if col not in df.columns]
-#         if missing_cols:
-#             return jsonify({"error": f"Colonnes manquantes après renommage : {', '.join(missing_cols)}"}), 400
-
-#         # 4️⃣ Conversion de date si nécessaire
-#         if df["date_comite_validation"].dtype in ["float64", "int64"]:
-#             df["date_comite_validation"] = pd.to_datetime(
-#                 df["date_comite_validation"], unit='d', origin='1899-12-30'
-#             )
-
-#         # 5️⃣ Récupération de la session
-#         id_type_projet = session.get('id_type_projet')
-#         if not id_type_projet:
-#             return jsonify({"error": "Type de projet non sélectionné dans la session."}), 400
-
-#         created_by = f"{current_user.prenom} {current_user.nom}"
-
-#         # 6️⃣ Connexion BDD
-#         conn = get_connection()
-#         if conn is None:
-#             return jsonify({"error": "Connexion à la base impossible."}), 500
-
-#         with conn.cursor() as cur:
-#             # Vider la table temporaire
-#             cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
-
-#             # Boucle d'insertion inchangée
-#             for _, row in df.iterrows():
-#                 row_dict = row.to_dict()
-
-#                 cur.execute("""
-#                     INSERT INTO donnees_importees (
-#                         date_comite_validation, numero, pda, psf, departement,
-#                         commune, intitule_projet, denomination_entite, nom_promoteur,
-#                         sexe_promoteur, statut_juridique, adresse_contact, filiere,
-#                         maillon_type_credit, cout_total_projet, credit_solicite,
-#                         credit_accorde, refinancement_accorde, credit_accorde_statut,
-#                         total_financement, statut_dossier
-#                     ) VALUES (
-#                         %(date_comite_validation)s, %(numero)s, %(pda)s, %(psf)s, %(departement)s,
-#                         %(commune)s, %(intitule_projet)s, %(denomination_entite)s, %(nom_promoteur)s,
-#                         %(sexe_promoteur)s, %(statut_juridique)s, %(adresse_contact)s, %(filiere)s,
-#                         %(maillon_type_credit)s, %(cout_total_projet)s, %(credit_solicite)s,
-#                         %(credit_accorde)s, %(refinancement_accorde)s, %(credit_accorde_statut)s,
-#                         %(total_financement)s, %(statut_dossier)s
-#                     )
-#                 """, row_dict)
-
-                
-#                 cur.execute("""
-#                     INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique)
-#                     VALUES (%s, %s, %s, %s)
-#                     ON CONFLICT (nom_promoteur, nom_entite) DO NOTHING
-#                     """, (
-#                     row_dict["nom_promoteur"], row_dict["denomination_entite"],
-#                     row_dict["sexe_promoteur"], row_dict["statut_juridique"]
-#                     ))
-
-#                 cur.execute("""
-#                     INSERT INTO psf (nom_psf)
-#                     VALUES (%s)
-#                     ON CONFLICT (nom_psf) DO NOTHING
-#                 """, (row_dict["psf"],))
-
-#                 cur.execute("""
-#                     INSERT INTO filiere (nom_filiere, maillon)
-#                     VALUES (%s, %s)
-#                     ON CONFLICT (nom_filiere) DO NOTHING
-#                 """, (row_dict["filiere"], row_dict["maillon_type_credit"]))
-
-#                 # Récupérer les ids liés
-#                 cur.execute("SELECT id_promoteur FROM promoteur WHERE nom_promoteur = %s AND nom_entite = %s",
-#                             (row_dict["nom_promoteur"], row_dict["denomination_entite"]))
-#                 id_promoteur = cur.fetchone()
-#                 id_promoteur = id_promoteur[0] if id_promoteur else None
-
-#                 cur.execute("SELECT id_psf FROM psf WHERE nom_psf = %s", (row_dict["psf"],))
-#                 id_psf = cur.fetchone()
-#                 id_psf = id_psf[0] if id_psf else None
-
-#                 cur.execute("SELECT id_filiere FROM filiere WHERE nom_filiere = %s", (row_dict["filiere"],))
-#                 id_filiere = cur.fetchone()
-#                 id_filiere = id_filiere[0] if id_filiere else None
-
-#                 nom_commune = row_dict["commune"].strip().lower()
-#                 cur.execute("""
-#                     SELECT id_commune FROM commune
-#                     WHERE TRIM(LOWER(nom_commune)) = %s
-#                 """, (nom_commune,))
-#                 result_commune = cur.fetchone()
-#                 id_commune = result_commune[0] if result_commune else None
-
-#                 if not id_commune:
-#                     raise ValueError(f"Commune non trouvée pour : '{row_dict['commune']}'")
-
-#                 # Insertion finale dans projet_financement
-#                 cur.execute("""
-#                     INSERT INTO projet_financement (
-#                         date_comite_validation, id_psf, id_commune,
-#                         intitule_projet, id_promoteur, id_filiere,
-#                         cout_total_projet, credit_solicite, credit_accorde,
-#                         refinancement_accorde, credit_accorde_statut, total_financement,
-#                         statut_dossier, id_type_projet, created_by
-#                     ) VALUES (
-#                         %(date_comite_validation)s, %(id_psf)s, %(id_commune)s,
-#                         %(intitule_projet)s, %(id_promoteur)s, %(id_filiere)s,
-#                         %(cout_total_projet)s, %(credit_solicite)s, %(credit_accorde)s,
-#                         %(refinancement_accorde)s, %(credit_accorde_statut)s, %(total_financement)s,
-#                         %(statut_dossier)s, %(id_type_projet)s, %(created_by)s
-#                     )
-#                 """, {
-#                     "date_comite_validation": row_dict["date_comite_validation"],
-#                     "id_psf": id_psf,
-#                     "id_commune": id_commune,
-#                     "intitule_projet": row_dict["intitule_projet"],
-#                     "id_promoteur": id_promoteur,
-#                     "id_filiere": id_filiere,
-#                     "cout_total_projet": row_dict["cout_total_projet"],
-#                     "credit_solicite": row_dict["credit_solicite"],
-#                     "credit_accorde": row_dict["credit_accorde"],
-#                     "refinancement_accorde": row_dict["refinancement_accorde"],
-#                     "credit_accorde_statut": row_dict["credit_accorde_statut"],
-#                     "total_financement": row_dict["total_financement"],
-#                     "statut_dossier": row_dict["statut_dossier"],
-#                     "id_type_projet": id_type_projet,
-#                     "created_by": created_by
-#                 })
-
-#             # Commit des données principales
-#             conn.commit()
-
-#             # Insérer l'historique d'importation en succès
-#             cur.execute("""
-#                 INSERT INTO historique_importation (
-#                     nom_fichier, id_type_projet, utilisateur, statut
-#                 ) VALUES (%s, %s, %s, %s)
-#             """, (nom_fichier, id_type_projet, created_by, True))
-
-#             conn.commit()
-
-#         session.pop('id_type_projet', None)
-#         return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
-
-#     except Exception as e:
-#         if conn:
-#             conn.rollback()
-#         try:
-#             # Enregistrement dans historique d'import en cas d'erreur
-#           with conn.cursor() as cur:
-#                 cur.execute("""
-#                     INSERT INTO historique_importation (
-#                         nom_fichier, id_type_projet, utilisateur, statut
-#                     ) VALUES (%s, %s, %s, %s)
-#                 """, (
-#                     nom_fichier if 'nom_fichier' in locals() else None,
-#                     id_type_projet if 'id_type_projet' in locals() else None,
-#                     created_by if 'created_by' in locals() else None,
-#                     False
-#                 ))
-#                 conn.commit()
-
-#         except:
-#             # On ignore l'erreur ici pour ne pas masquer l'originale
-#             pass
-
-#         return jsonify({"error": str(e)}), 500
-
-#     finally:
-#         if conn:
-#             conn.close()
 
 
 
@@ -1537,12 +1324,17 @@ def projets_par_departement():
 
         with conn.cursor() as cur:
             query = """
-                SELECT d.nom_departement, COUNT(cf.id_projet) AS nombre_projets
-                FROM credit_facilite cf
-                JOIN commune c ON cf.id_commune = c.id_commune
-                JOIN departement d ON c.id_departement = d.id_departement
-                WHERE cf.credit_accorde IS NOT NULL AND cf.credit_accorde > 0
+                SELECT d.nom_departement, COALESCE(COUNT(cf.id_projet), 0) AS nombre_projets
+                FROM departement d
+                LEFT JOIN commune c ON d.id_departement = c.id_departement
+                LEFT JOIN credit_facilite cf ON cf.id_commune = c.id_commune
+                AND cf.credit_accorde IS NOT NULL
+                AND cf.credit_accorde > 0
+                {date_filter}
+                GROUP BY d.nom_departement
+                ORDER BY nombre_projets DESC
             """
+
             params = []
 
             if start_date:
