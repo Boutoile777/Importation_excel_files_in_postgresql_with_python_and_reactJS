@@ -1310,9 +1310,12 @@ def add_type_projet():
             conn.close()
 
 
+
+
+
 # 1️⃣ Nombre de projets financés par département
 @auth_bp.route('/projets-par-departement', methods=['GET'])
-@login_required
+# @login_required
 def projets_par_departement():
     try:
         start_date = request.args.get('start_date')
@@ -1323,33 +1326,44 @@ def projets_par_departement():
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
+            # Base de la requête
             query = """
-                SELECT d.nom_departement, COALESCE(COUNT(cf.id_projet), 0) AS nombre_projets
+                SELECT d.nom_departement, 
+                       COALESCE(COUNT(cf.id_projet), 0) AS nombre_projets
                 FROM departement d
-                LEFT JOIN commune c ON d.id_departement = c.id_departement
-                LEFT JOIN credit_facilite cf ON cf.id_commune = c.id_commune
-                AND cf.credit_accorde IS NOT NULL
-                AND cf.credit_accorde > 0
-                {date_filter}
-                GROUP BY d.nom_departement
-                ORDER BY nombre_projets DESC
+                LEFT JOIN commune c 
+                       ON d.id_departement = c.id_departement
+                LEFT JOIN credit_facilite cf 
+                       ON cf.id_commune = c.id_commune
+                      AND cf.credit_accorde IS NOT NULL
+                      AND cf.credit_accorde > 0
             """
 
+            # Conditions dynamiques
+            conditions = []
             params = []
 
             if start_date:
-                query += " AND cf.date_comite_validation >= %s::date"
+                conditions.append("cf.date_comite_validation >= %s::date")
                 params.append(start_date)
             if end_date:
-                query += " AND cf.date_comite_validation <= %s::date"
+                conditions.append("cf.date_comite_validation <= %s::date")
                 params.append(end_date)
 
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            # Fin de requête
             query += " GROUP BY d.nom_departement ORDER BY nombre_projets DESC"
 
+            # Exécution
             cur.execute(query, tuple(params))
             rows = cur.fetchall()
 
-            result = [{'departement': row[0], 'nb_projets': row[1]} for row in rows]
+            result = [
+                {'departement': row[0], 'nb_projets': row[1]}
+                for row in rows
+            ]
 
         return jsonify(result), 200
 
@@ -1364,7 +1378,7 @@ def projets_par_departement():
 
 # 2️⃣ Nombre de promoteurs par filière
 @auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
-@login_required
+# @login_required
 def promoteurs_par_filiere():
     try:
         start_date = request.args.get('start_date')

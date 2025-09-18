@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
   PieChart, Pie, Cell
 } from "recharts";
 
-const Graphiques = () => {
+const Tableaux = () => {
   const navigate = useNavigate();
   const [projetsDept, setProjetsDept] = useState([]);
   const [promoteursFiliere, setPromoteursFiliere] = useState([]);
@@ -13,13 +13,9 @@ const Graphiques = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // filtres de date
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A569BD', '#FF6384'];
-
-  // fonction pour charger les données
   const fetchData = async () => {
     if (!startDate || !endDate) {
       setErrorMessage("Veuillez choisir une date de début et de fin.");
@@ -33,21 +29,21 @@ const Graphiques = () => {
         `http://localhost:5000/auth/projets-par-departement?start_date=${startDate}&end_date=${endDate}`,
         { credentials: "include" }
       );
-      if (!resProjets.ok) throw new Error("Erreur lors du chargement des projets par département");
+      if (!resProjets.ok) throw new Error("Erreur projets par département");
       setProjetsDept(await resProjets.json());
 
       const resPromoteurs = await fetch(
         `http://localhost:5000/auth/promoteurs-par-filiere?start_date=${startDate}&end_date=${endDate}`,
         { credentials: "include" }
       );
-      if (!resPromoteurs.ok) throw new Error("Erreur lors du chargement des promoteurs par filière");
+      if (!resPromoteurs.ok) throw new Error("Erreur promoteurs par filière");
       setPromoteursFiliere(await resPromoteurs.json());
 
       const resCredits = await fetch(
         `http://localhost:5000/auth/credits-par-commune?start_date=${startDate}&end_date=${endDate}`,
         { credentials: "include" }
       );
-      if (!resCredits.ok) throw new Error("Erreur lors du chargement des crédits par commune");
+      if (!resCredits.ok) throw new Error("Erreur crédits par commune");
       setCreditsCommune(await resCredits.json());
 
     } catch (error) {
@@ -56,6 +52,8 @@ const Graphiques = () => {
       setLoading(false);
     }
   };
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A569BD', '#FF6384'];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center space-y-12">
@@ -72,7 +70,7 @@ const Graphiques = () => {
       {/* Menu de filtres */}
       <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-6">
         <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">
-          Filtrer les données par date de comité de validation
+          Filtrer par date de comité de validation
         </h2>
         <div className="flex flex-col md:flex-row justify-center items-center gap-4">
           <div>
@@ -102,16 +100,20 @@ const Graphiques = () => {
         </div>
       </section>
 
-      {/* Message de chargement ou erreur */}
-      {loading && <p className="text-center text-lg text-gray-600">Chargement des graphiques...</p>}
+      {/* Message */}
+      {loading && <p className="text-center text-lg text-gray-600">Chargement...</p>}
       {errorMessage && <p className="text-center text-red-600">{errorMessage}</p>}
 
-      {/* Graphique 1 : Projets par département */}
+      {/* 1️⃣ Projets par département */}
       {!loading && projetsDept.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg hover:shadow-2xl transition">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Projets par département</h2>
-          <div className="flex justify-center">
-            <BarChart width={700} height={350} data={projetsDept}>
+        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
+            Projets par département
+          </h2>
+
+          {/* Histogramme */}
+          <div className="flex justify-center mb-6">
+            <BarChart width={700} height={300} data={projetsDept}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="departement" />
               <YAxis />
@@ -122,18 +124,37 @@ const Graphiques = () => {
               </Bar>
             </BarChart>
           </div>
-          <p className="mt-4 text-gray-600 text-center">
-            Ce graphique montre le nombre de projets financés dans chaque département.
-          </p>
+
+          {/* Tableau */}
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border px-4 py-2">Département</th>
+                <th className="border px-4 py-2">Nombre de projets</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projetsDept.map((row, index) => (
+                <tr key={index} className="hover:bg-gray-100">
+                  <td className="border px-4 py-2">{row.departement}</td>
+                  <td className="border px-4 py-2">{row.nb_projets}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
 
-      {/* Graphique 2 : Promoteurs par filière */}
+      {/* 2️⃣ Promoteurs par filière */}
       {!loading && promoteursFiliere.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg hover:shadow-2xl transition">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Promoteurs par filière</h2>
-          <div className="flex justify-center">
-            <BarChart width={700} height={350} data={promoteursFiliere}>
+        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
+            Promoteurs par filière
+          </h2>
+
+          {/* Histogramme */}
+          <div className="flex justify-center mb-6">
+            <BarChart width={700} height={300} data={promoteursFiliere}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="filiere" />
               <YAxis />
@@ -144,17 +165,36 @@ const Graphiques = () => {
               </Bar>
             </BarChart>
           </div>
-          <p className="mt-4 text-gray-600 text-center">
-            Ce graphique représente le nombre de promoteurs actifs par filière.
-          </p>
+
+          {/* Tableau */}
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border px-4 py-2">Filière</th>
+                <th className="border px-4 py-2">Nombre de promoteurs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {promoteursFiliere.map((row, index) => (
+                <tr key={index} className="hover:bg-gray-100">
+                  <td className="border px-4 py-2">{row.filiere}</td>
+                  <td className="border px-4 py-2">{row.nb_promoteurs}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
 
-      {/* Graphique 3 : Crédits par commune */}
+      {/* 3️⃣ Crédits par commune */}
       {!loading && creditsCommune.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg hover:shadow-2xl transition">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Crédits par commune</h2>
-          <div className="flex justify-center">
+        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
+            Crédits par commune
+          </h2>
+
+          {/* Diagramme circulaire */}
+          <div className="flex justify-center mb-6">
             <PieChart width={500} height={400}>
               <Pie
                 data={creditsCommune}
@@ -172,13 +212,28 @@ const Graphiques = () => {
               <Tooltip formatter={(value) => [`${value}`, "Montant crédits"]} />
             </PieChart>
           </div>
-          <p className="mt-4 text-gray-600 text-center">
-            Ce graphique illustre la répartition des crédits accordés par commune.
-          </p>
+
+          {/* Tableau */}
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border px-4 py-2">Commune</th>
+                <th className="border px-4 py-2">Montant crédits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {creditsCommune.map((row, index) => (
+                <tr key={index} className="hover:bg-gray-100">
+                  <td className="border px-4 py-2">{row.commune}</td>
+                  <td className="border px-4 py-2">{row.total_credits}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
     </div>
   );
 };
 
-export default Graphiques;
+export default Tableaux;
