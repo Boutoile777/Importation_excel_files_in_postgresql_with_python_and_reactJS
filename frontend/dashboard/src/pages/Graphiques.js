@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
   PieChart, Pie, Cell
 } from "recharts";
+import html2canvas from "html2canvas";
 
 const Tableaux = () => {
   const navigate = useNavigate();
@@ -15,6 +16,11 @@ const Tableaux = () => {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Références pour chaque section
+  const projetsRef = useRef();
+  const promoteursRef = useRef();
+  const creditsRef = useRef();
 
   const fetchData = async () => {
     if (!startDate || !endDate) {
@@ -54,6 +60,24 @@ const Tableaux = () => {
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A569BD', '#FF6384'];
+
+// Fonction pour capturer et sauvegarder une section (sans bouton)
+const saveSectionAsImage = (ref, fileName) => {
+  if (!ref.current) return;
+  html2canvas(ref.current, {
+    ignoreElements: (element) => {
+      // On ignore les boutons de téléchargement
+      return element.tagName === "BUTTON";
+    },
+    backgroundColor: "#ffffff" // fond blanc propre
+  }).then((canvas) => {
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+};
+
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center space-y-12">
@@ -106,14 +130,14 @@ const Tableaux = () => {
 
       {/* 1️⃣ Projets par département */}
       {!loading && projetsDept.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+        <section ref={projetsRef} className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
           <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
             Projets par département
           </h2>
 
           {/* Histogramme */}
           <div className="flex justify-center mb-6">
-            <BarChart width={700} height={300} data={projetsDept}>
+            <BarChart width={700} height={300} data={projetsDept} margin={{ top: 30, right: 30, left: 20, bottom: 5 }} >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="departement" />
               <YAxis />
@@ -142,19 +166,29 @@ const Tableaux = () => {
               ))}
             </tbody>
           </table>
+
+          {/* Bouton de téléchargement */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => saveSectionAsImage(projetsRef, "projets_par_departement.png")}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-md"
+            >
+              Enregistrer cette section
+            </button>
+          </div>
         </section>
       )}
 
       {/* 2️⃣ Promoteurs par filière */}
       {!loading && promoteursFiliere.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+        <section ref={promoteursRef} className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
           <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
             Promoteurs par filière
           </h2>
 
           {/* Histogramme */}
           <div className="flex justify-center mb-6">
-            <BarChart width={700} height={300} data={promoteursFiliere}>
+            <BarChart width={700} height={300} data={promoteursFiliere} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="filiere" />
               <YAxis />
@@ -183,19 +217,29 @@ const Tableaux = () => {
               ))}
             </tbody>
           </table>
+
+          {/* Bouton de téléchargement */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => saveSectionAsImage(promoteursRef, "promoteurs_par_filiere.png")}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-md"
+            >
+              Enregistrer cette section
+            </button>
+          </div>
         </section>
       )}
 
       {/* 3️⃣ Crédits par commune */}
       {!loading && creditsCommune.length > 0 && (
-        <section className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
+        <section ref={creditsRef} className="bg-white w-full max-w-4xl p-6 rounded-2xl shadow-lg mb-8">
           <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
             Crédits par commune
           </h2>
 
           {/* Diagramme circulaire */}
           <div className="flex justify-center mb-6">
-            <PieChart width={500} height={400}>
+            <PieChart width={ 600} height={400} >
               <Pie
                 data={creditsCommune}
                 dataKey="total_credits"
@@ -230,6 +274,16 @@ const Tableaux = () => {
               ))}
             </tbody>
           </table>
+
+          {/* Bouton de téléchargement */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => saveSectionAsImage(creditsRef, "credits_par_commune.png")}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-md"
+            >
+              Enregistrer une copie
+            </button>
+          </div>
         </section>
       )}
     </div>
