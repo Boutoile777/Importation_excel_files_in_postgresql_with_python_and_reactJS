@@ -1313,7 +1313,141 @@ def add_type_projet():
 
 
 
-# 1️⃣ Nombre de projets financés par département
+
+@auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
+# @login_required
+def promoteurs_par_filiere():
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            # Récupérer tous les types de projet
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            # Requête principale
+            query = """
+                SELECT f.nom_filiere, cf.id_type_projet, COUNT(DISTINCT cf.id_promoteur) AS nb_promoteurs
+                FROM credit_facilite cf
+                JOIN filiere f ON cf.id_filiere = f.id_filiere
+                WHERE 1=1
+            """
+            conditions = []
+            params = []
+
+            if start_date:
+                conditions.append("cf.date_comite_validation >= %s::date")
+                params.append(start_date)
+            if end_date:
+                conditions.append("cf.date_comite_validation <= %s::date")
+                params.append(end_date)
+
+            if conditions:
+                query += " AND " + " AND ".join(conditions)
+
+            query += " GROUP BY f.nom_filiere, cf.id_type_projet ORDER BY f.nom_filiere"
+
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()  # [(filiere, id_type_projet, nb_promoteurs), ...]
+
+            # Transformation en tableau croisé
+            result = {}
+            for filiere, type_id, nb in rows:
+                if filiere not in result:
+                    result[filiere] = {'filiere': filiere, 'total': 0}
+                    for tp in type_map.values():
+                        result[filiere][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[filiere][type_name] = nb
+                result[filiere]['total'] += nb
+
+            return jsonify({
+                'types_projet': list(type_map.values()),
+                'data': list(result.values())
+            }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+@auth_bp.route('/credits-par-commune', methods=['GET'])
+# @login_required
+def credits_par_commune():
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            # Tous les types de projet
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            # Requête principale
+            query = """
+                SELECT c.nom_commune, cf.id_type_projet, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN commune c ON cf.id_commune = c.id_commune
+                WHERE cf.credit_accorde IS NOT NULL
+            """
+            conditions = []
+            params = []
+
+            if start_date:
+                conditions.append("cf.date_comite_validation >= %s::date")
+                params.append(start_date)
+            if end_date:
+                conditions.append("cf.date_comite_validation <= %s::date")
+                params.append(end_date)
+
+            if conditions:
+                query += " AND " + " AND ".join(conditions)
+
+            query += " GROUP BY c.nom_commune, cf.id_type_projet ORDER BY c.nom_commune"
+
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()  # [(commune, id_type_projet, total_credits), ...]
+
+            # Transformation en tableau croisé
+            result = {}
+            for commune, type_id, total in rows:
+                if commune not in result:
+                    result[commune] = {'commune': commune, 'total': 0}
+                    for tp in type_map.values():
+                        result[commune][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[commune][type_name] = float(total) if total else 0
+                result[commune]['total'] += float(total) if total else 0
+
+            return jsonify({
+                'types_projet': list(type_map.values()),
+                'data': list(result.values())
+            }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+
+# 1️⃣ Nombre de projets financés par département par type de projet
 @auth_bp.route('/projets-par-departement', methods=['GET'])
 # @login_required
 def projets_par_departement():
@@ -1326,20 +1460,22 @@ def projets_par_departement():
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            # Base de la requête
+            # On récupère les types de projet existants pour créer les colonnes dynamiques
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()  # [(id_type1, "Type 1"), (id_type2, "Type 2"), ...]
+
+            type_map = {tp[0]: tp[1] for tp in types_projet}  # dict id -> nom
+
+            # Requête principale : nombre de projets par département et type
             query = """
-                SELECT d.nom_departement, 
-                       COALESCE(COUNT(cf.id_projet), 0) AS nombre_projets
+                SELECT d.nom_departement, cf.id_type_projet, COUNT(cf.id_projet) AS nb_projets
                 FROM departement d
-                LEFT JOIN commune c 
-                       ON d.id_departement = c.id_departement
+                LEFT JOIN commune c ON d.id_departement = c.id_departement
                 LEFT JOIN credit_facilite cf 
                        ON cf.id_commune = c.id_commune
                       AND cf.credit_accorde IS NOT NULL
                       AND cf.credit_accorde > 0
             """
-
-            # Conditions dynamiques
             conditions = []
             params = []
 
@@ -1353,114 +1489,26 @@ def projets_par_departement():
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
 
-            # Fin de requête
-            query += " GROUP BY d.nom_departement ORDER BY nombre_projets DESC"
-
-            # Exécution
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()
-
-            result = [
-                {'departement': row[0], 'nb_projets': row[1]}
-                for row in rows
-            ]
-
-        return jsonify(result), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
-
-
-
-# 2️⃣ Nombre de promoteurs par filière
-@auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
-# @login_required
-def promoteurs_par_filiere():
-    try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-
-        conn = get_connection()
-        if conn is None:
-            return jsonify({'error': 'Connexion à la base impossible.'}), 500
-
-        with conn.cursor() as cur:
-            query = """
-                SELECT f.nom_filiere, COUNT(DISTINCT cf.id_promoteur) AS nb_promoteurs
-                FROM credit_facilite cf
-                JOIN filiere f ON cf.id_filiere = f.id_filiere
-                WHERE 1=1
-            """
-            params = []
-
-            if start_date:
-                query += " AND cf.date_comite_validation >= %s::date"
-                params.append(start_date)
-            if end_date:
-                query += " AND cf.date_comite_validation <= %s::date"
-                params.append(end_date)
-
-            query += " GROUP BY f.nom_filiere ORDER BY nb_promoteurs DESC"
+            query += " GROUP BY d.nom_departement, cf.id_type_projet ORDER BY d.nom_departement"
 
             cur.execute(query, tuple(params))
-            rows = cur.fetchall()
+            rows = cur.fetchall()  # [(departement, id_type_projet, nb_projets), ...]
 
-            result = [{'filiere': row[0], 'nb_promoteurs': row[1]} for row in rows]
+            # Transformation en tableau croisé
+            result = {}
+            for dep, type_id, nb in rows:
+                if dep not in result:
+                    result[dep] = {'departement': dep, 'total': 0}
+                    for tp in type_map.values():
+                        result[dep][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[dep][type_name] = nb
+                result[dep]['total'] += nb
 
-        return jsonify(result), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
-
-
-
-# 3️⃣ Montant total des crédits par commune
-@auth_bp.route('/credits-par-commune', methods=['GET'])
-@login_required
-def credits_par_commune():
-    try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-
-        conn = get_connection()
-        if conn is None:
-            return jsonify({'error': 'Connexion à la base impossible.'}), 500
-
-        with conn.cursor() as cur:
-            query = """
-                SELECT c.nom_commune, SUM(cf.credit_accorde) AS montant_total
-                FROM credit_facilite cf
-                JOIN commune c ON cf.id_commune = c.id_commune
-                WHERE cf.credit_accorde IS NOT NULL
-            """
-            params = []
-
-            if start_date:
-                query += " AND cf.date_comite_validation >= %s::date"
-                params.append(start_date)
-            if end_date:
-                query += " AND cf.date_comite_validation <= %s::date"
-                params.append(end_date)
-
-            query += " GROUP BY c.nom_commune ORDER BY montant_total DESC"
-
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()
-
-            result = [
-                {'commune': row[0], 'total_credits': float(row[1]) if row[1] else 0}
-                for row in rows
-            ]
-
-        return jsonify(result), 200
+            return jsonify({
+                'types_projet': list(type_map.values()),
+                'data': list(result.values())
+            }), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
