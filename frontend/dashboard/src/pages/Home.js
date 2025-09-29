@@ -45,13 +45,13 @@ function Home() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-6 mt-6">
             <button
-              onClick={() => navigate('/comment-ca-marche')}
+              onClick={() => navigate('/dashboard/comment-ca-marche')}
               className="bg-green-600 text-white px-6 py-3 text-base md:text-lg rounded-lg hover:bg-white hover:text-green-700 hover:border transition border-transparent hover:border-green-600"
             >
               Fonctionnement
             </button>
             <button
-              onClick={() => navigate('/importer')}
+              onClick={() => navigate('/dashboard/importer')}
               className="bg-white border border-green-600 text-green-700 px-6 py-3 text-base md:text-lg rounded-lg hover:bg-green-600 hover:text-white transition"
             >
               Importer maintenant

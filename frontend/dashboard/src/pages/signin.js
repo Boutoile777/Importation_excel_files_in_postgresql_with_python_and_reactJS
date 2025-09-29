@@ -150,11 +150,7 @@ export default function SignIn() {
           </Link>
         </p>
 
-        <p className="mt-2 text-center">
-          <Link to="/signup" className="text-emerald-600 hover:underline">
-            Créer un compte
-          </Link>
-        </p>
+      
 
         {message && <p className={`mt-4 text-center font-semibold ${messageColor}`}>{message}</p>}
       </div>

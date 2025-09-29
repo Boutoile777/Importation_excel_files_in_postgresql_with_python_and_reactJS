@@ -1312,7 +1312,7 @@ def add_type_projet():
 
 
 
-
+# 3️⃣ Nombre de promoteurs par filière 
 
 @auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
 # @login_required
@@ -1378,6 +1378,9 @@ def promoteurs_par_filiere():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+
+# 2️⃣ Montant des crédits accordés par commune 
 
 @auth_bp.route('/credits-par-commune', methods=['GET'])
 # @login_required
@@ -1447,7 +1450,7 @@ def credits_par_commune():
 
 
 
-# 1️⃣ Nombre de projets financés par département par type de projet
+# 1️⃣ Nombre de projets financés par département
 @auth_bp.route('/projets-par-departement', methods=['GET'])
 # @login_required
 def projets_par_departement():
@@ -1504,6 +1507,76 @@ def projets_par_departement():
                 type_name = type_map.get(type_id, "Inconnu")
                 result[dep][type_name] = nb
                 result[dep]['total'] += nb
+
+            return jsonify({
+                'types_projet': list(type_map.values()),
+                'data': list(result.values())
+            }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+# 2️⃣ Nombre de projets financés par PDA
+@auth_bp.route('/projets-par-pda', methods=['GET'])
+def projets_par_pda():
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            # Récupérer tous les types de projet
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()  # [(id_type1, "BONIFICATION"), ...]
+
+            type_map = {tp[0]: tp[1] for tp in types_projet}  # id -> nom
+
+            # Requête principale : projets par PDA et type
+            query = """
+                SELECT p.nom_pda, cf.id_type_projet, COUNT(cf.id_projet) AS nb_projets
+                FROM pda p
+                LEFT JOIN commune c ON c.id_pda = p.id_pda
+                LEFT JOIN credit_facilite cf
+                       ON cf.id_commune = c.id_commune
+                      AND cf.credit_accorde IS NOT NULL
+                      AND cf.credit_accorde > 0
+            """
+            conditions = []
+            params = []
+
+            if start_date:
+                conditions.append("cf.date_comite_validation >= %s::date")
+                params.append(start_date)
+            if end_date:
+                conditions.append("cf.date_comite_validation <= %s::date")
+                params.append(end_date)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " GROUP BY p.nom_pda, cf.id_type_projet ORDER BY p.nom_pda"
+
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()  # [(nom_pda, id_type_projet, nb_projets), ...]
+
+            # Transformation en tableau croisé
+            result = {}
+            for pda_name, type_id, nb in rows:
+                if pda_name not in result:
+                    result[pda_name] = {'pda': pda_name, 'total': 0}
+                    for tp in type_map.values():
+                        result[pda_name][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[pda_name][type_name] = nb
+                result[pda_name]['total'] += nb
 
             return jsonify({
                 'types_projet': list(type_map.values()),
