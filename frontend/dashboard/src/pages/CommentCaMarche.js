@@ -40,7 +40,7 @@ function CommentCaMarche() {
   useEffect(() => {
     const fetchFacilites = async () => {
       try {
-        const response = await fetch('http://192.168.50.103:5000/auth/types_projets', {
+        const response = await fetch('http://localhost:5000/auth/types_projets', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include', // utile si tu utilises Flask-Login avec sessions

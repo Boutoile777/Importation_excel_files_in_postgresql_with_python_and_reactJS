@@ -522,48 +522,6 @@ def reset_password(token):
         if 'conn' in locals() and conn:
             conn.close()
 
-# -----------------------------
-# Route de gestion des users par l'admin (bloqué ou débloqué)
-# -----------------------------
-
-# @auth_bp.route('/changer_permission/<int:user_id>', methods=['PUT'])
-# @login_required
-# @admin_required
-# def changer_permission(user_id):
-#     try:
-#         data = request.json
-#         nouvelle_permission = data.get('permission')
-
-#         if nouvelle_permission not in ['accepté', 'bloqué']:
-#             return jsonify({'error': 'Permission invalide. Doit être "accepté" ou "bloqué".'}), 400
-
-#         conn = get_connection()
-#         if conn is None:
-#             return jsonify({'error': 'Connexion à la base impossible.'}), 500
-
-#         with conn.cursor() as cur:
-#             # Vérifier que l'utilisateur existe
-#             cur.execute("SELECT id FROM utilisateur WHERE id = %s", (user_id,))
-#             if not cur.fetchone():
-#                 return jsonify({'error': 'Utilisateur non trouvé.'}), 404
-
-#             # Mettre à jour la permission
-#             cur.execute("""
-#                 UPDATE utilisateur
-#                 SET permission = %s
-#                 WHERE id = %s
-#             """, (nouvelle_permission, user_id))
-#             conn.commit()
-
-#         return jsonify({'message': f'Permission mise à jour en "{nouvelle_permission}" pour l\'utilisateur {user_id}.'}), 200
-
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
-
-#     finally:
-#         if 'conn' in locals() and conn:
-#             conn.close()
-
 
 
 
@@ -828,6 +786,48 @@ def import_excel_history():
     finally:
         if conn:
             conn.close()
+            
+# Route pour supprimer toutes les entrées de l'historique
+@auth_bp.route('/history', methods=['DELETE'])
+@login_required
+def delete_all_history():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM historique_importation")
+            conn.commit()
+        return jsonify({"message": "Tous les historiques ont été supprimés"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+# Route pour supprimer une entrée de l'historique
+
+@auth_bp.route('/history/<int:id>', methods=['DELETE'])
+@login_required
+def delete_history(id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            # Vérifie si l'entrée existe
+            cur.execute("SELECT id FROM historique_importation WHERE id = %s", (id,))
+            if cur.fetchone() is None:
+                return jsonify({"error": "Historique non trouvé"}), 404
+
+            # Supprime l'entrée
+            cur.execute("DELETE FROM historique_importation WHERE id = %s", (id,))
+            conn.commit()
+
+        return jsonify({"success": True, "message": f"Historique {id} supprimé"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if conn:
+            conn.close()
 
 
 
@@ -945,36 +945,39 @@ def import_excel():
 
         # Mapping correspondant aux fichiers de Garantie et de Bonification
 
-        # mapping_fichier2 = {
-        #         "DATE COMITE VALIDATION": "date_comite_validation",
-        #         "N°": "numero",
-        #         "PDA": "pda",
-        #         "PSF": "psf",
-        #         "Département": "departement",
-        #         "Commune": "commune",
-        #         "Objet du crédits": "intitule_projet",
-        #         "Noms du groupe/groupement/MPME/individu/…": "denomination_entite",
-        #         "Nom du responsable": "nom_promoteur",
-        #         "NPI": "npi",
-        #         "Contact": "adresse_contact",
-        #         "FILIERE": "filiere",
-        #         "Type crédits": "maillon_type_credit",
-        #         "Montant sollicité": "credit_solicite",
-        #         "Montant accordé": "credit_accorde",
-        #         "Date de décaissement": "date_decaissement",
-        #         "Noms des bénéficiaires": "nom_beneficiaire",
-        #         "Nombre de bénéficiaire homme": "nb_beneficiaires_hommes",
-        #         "Nombre de bénéficiaire femme": "nb_beneficiaires_femmes",
-        #         "Total bénéficiaire": "total_beneficiaires",
-        #         "Durée": "duree",
-        #         "Différé (mois)": "differe_mois",
-        #         "Date première échéance": "date_premiere_echeance",
-        #         "Date dernière échéance": "date_derniere_echeance",
-        #         "Périodicité de remboursement": "periodicite_remboursement",
-        #         "Observations": "observations",
-        #         "Rang/Cycles": "rang_cycle",
-        #         "Chiffre d'Affaire annuel": "chiffre_affaires_annuel"
-        #     }
+        mapping_fichier2 = {
+                "DATE COMITE VALIDATION": "date_comite_validation",
+                "N°": "numero",
+                "PDA": "pda",
+                "PSF": "psf",
+                "Département": "departement",
+                "Commune": "commune",
+                "INTITULE DU PROJET": "intitule_projet",
+                "DENOMINATION DE L'ENTITE": "denomination_entite",
+                "NUMERO D'IDENTIFICATION PERSONNEL (NPI) DU PROMOTEUR": "npi",
+                "NOM DU PROMOTEUR": "nom_promoteur",
+                "SEXE PROMOTEUR": "sexe_promoteur",
+                "STATUT JURIDIQUE": "statut_juridique",    
+                "Localisation ou adresse/contact": "adresse_contact",
+                "FILIERE": "filiere",
+                "COUT TOTAL DU PROJET": "cout_total_projet",
+                "CREDIT SOLLICITE": "credit_solicite",
+                "CREDIT ACCORDE": "credit_accorde",
+                "REFINANCEMENT ACCORDE ": "refinancement_accorde",
+                "GARANTIE FNDA ACCORDEE": "garantie_fnda_accordee",
+                "BONIFICATION ACCORDEE": "bonification_fnda_accordee",
+                "CREDIT ACCORDE?": "credit_accorde_statut",
+                "SI NON, MOTIF":"motif_credit_non_accordee",
+                "TOTAL FINANCEMENT": "total_financement",
+                "STATUT DOSSIER": "statut_dossier",
+                "DATE DE CREATION DE L'ENTITE": "date_creation_entite",
+                "NOTIFIE?": "notification",
+                "SI OUI, REFERENCE": "reference_si_notifiee",
+                "Date de notification": "date_notification",
+                "CONTRAT SIGNE?": "contrat_signe",
+                "MONTANT DECAISSE ?": "montant_decaisse"
+
+            }
 
 
         # 3️⃣ Colonnes date
@@ -1444,46 +1447,34 @@ def promoteurs_par_filiere():
 # 2️⃣ Montant des crédits accordés par commune 
 
 @auth_bp.route('/credits-par-commune', methods=['GET'])
-# @login_required
 def credits_par_commune():
     try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
 
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            # Tous les types de projet
+            # Récupérer les types de projet
             cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
             types_projet = cur.fetchall()
             type_map = {tp[0]: tp[1] for tp in types_projet}
 
-            # Requête principale
+            # Requête : seules les communes avec des opérations
             query = """
                 SELECT c.nom_commune, cf.id_type_projet, SUM(cf.credit_accorde) AS total_credits
                 FROM credit_facilite cf
                 JOIN commune c ON cf.id_commune = c.id_commune
-                WHERE cf.credit_accorde IS NOT NULL
+                WHERE cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation < %s::date
+                  AND cf.credit_accorde IS NOT NULL
+                GROUP BY c.nom_commune, cf.id_type_projet
+                ORDER BY c.nom_commune, cf.id_type_projet
             """
-            conditions = []
-            params = []
-
-            if start_date:
-                conditions.append("cf.date_comite_validation >= %s::date")
-                params.append(start_date)
-            if end_date:
-                conditions.append("cf.date_comite_validation <= %s::date")
-                params.append(end_date)
-
-            if conditions:
-                query += " AND " + " AND ".join(conditions)
-
-            query += " GROUP BY c.nom_commune, cf.id_type_projet ORDER BY c.nom_commune"
-
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()  # [(commune, id_type_projet, total_credits), ...]
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
 
             # Transformation en tableau croisé
             result = {}
@@ -1493,13 +1484,10 @@ def credits_par_commune():
                     for tp in type_map.values():
                         result[commune][tp] = 0
                 type_name = type_map.get(type_id, "Inconnu")
-                result[commune][type_name] = float(total) if total else 0
-                result[commune]['total'] += float(total) if total else 0
+                result[commune][type_name] = float(total)
+                result[commune]['total'] += float(total)
 
-            return jsonify({
-                'types_projet': list(type_map.values()),
-                'data': list(result.values())
-            }), 200
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1511,52 +1499,40 @@ def credits_par_commune():
 
 
 
+
 # 1️⃣ Nombre de projets financés par département
 @auth_bp.route('/projets-par-departement', methods=['GET'])
-# @login_required
 def projets_par_departement():
     try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
 
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            # On récupère les types de projet existants pour créer les colonnes dynamiques
+            # Récupérer tous les types de projet
             cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
-            types_projet = cur.fetchall()  # [(id_type1, "Type 1"), (id_type2, "Type 2"), ...]
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
 
-            type_map = {tp[0]: tp[1] for tp in types_projet}  # dict id -> nom
-
-            # Requête principale : nombre de projets par département et type
+            # Requête principale avec CROSS JOIN + LEFT JOIN
             query = """
-                SELECT d.nom_departement, cf.id_type_projet, COUNT(cf.id_projet) AS nb_projets
-                FROM departement d
-                LEFT JOIN commune c ON d.id_departement = c.id_departement
-                LEFT JOIN credit_facilite cf 
+                SELECT d.nom_departement, tp.id_type_projet, COUNT(cf.id_projet) AS nb_projets
+                FROM type_projet tp
+                CROSS JOIN departement d
+                LEFT JOIN commune c ON c.id_departement = d.id_departement
+                LEFT JOIN credit_facilite cf
                        ON cf.id_commune = c.id_commune
-                      AND cf.credit_accorde IS NOT NULL
-                      AND cf.credit_accorde > 0
+                      AND cf.id_type_projet = tp.id_type_projet
+                      AND cf.date_comite_validation >= %s::date
+                      AND cf.date_comite_validation < %s::date
+                GROUP BY d.nom_departement, tp.id_type_projet
+                ORDER BY d.nom_departement, tp.id_type_projet
             """
-            conditions = []
-            params = []
-
-            if start_date:
-                conditions.append("cf.date_comite_validation >= %s::date")
-                params.append(start_date)
-            if end_date:
-                conditions.append("cf.date_comite_validation <= %s::date")
-                params.append(end_date)
-
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
-
-            query += " GROUP BY d.nom_departement, cf.id_type_projet ORDER BY d.nom_departement"
-
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()  # [(departement, id_type_projet, nb_projets), ...]
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
 
             # Transformation en tableau croisé
             result = {}
@@ -1569,10 +1545,7 @@ def projets_par_departement():
                 result[dep][type_name] = nb
                 result[dep]['total'] += nb
 
-            return jsonify({
-                'types_projet': list(type_map.values()),
-                'data': list(result.values())
-            }), 200
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1582,53 +1555,39 @@ def projets_par_departement():
             conn.close()
 
 
+
 # 2️⃣ Nombre de projets financés par PDA
 @auth_bp.route('/projets-par-pda', methods=['GET'])
 def projets_par_pda():
     try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
 
         conn = get_connection()
         if conn is None:
             return jsonify({'error': 'Connexion à la base impossible.'}), 500
 
         with conn.cursor() as cur:
-            # Récupérer tous les types de projet
             cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
-            types_projet = cur.fetchall()  # [(id_type1, "BONIFICATION"), ...]
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
 
-            type_map = {tp[0]: tp[1] for tp in types_projet}  # id -> nom
-
-            # Requête principale : projets par PDA et type
             query = """
-                SELECT p.nom_pda, cf.id_type_projet, COUNT(cf.id_projet) AS nb_projets
-                FROM pda p
+                SELECT p.nom_pda, tp.id_type_projet, COUNT(cf.id_projet) AS nb_projets
+                FROM type_projet tp
+                CROSS JOIN pda p
                 LEFT JOIN commune c ON c.id_pda = p.id_pda
                 LEFT JOIN credit_facilite cf
                        ON cf.id_commune = c.id_commune
-                      AND cf.credit_accorde IS NOT NULL
-                      AND cf.credit_accorde > 0
+                      AND cf.id_type_projet = tp.id_type_projet
+                      AND cf.date_comite_validation >= %s::date
+                      AND cf.date_comite_validation < %s::date
+                GROUP BY p.nom_pda, tp.id_type_projet
+                ORDER BY p.nom_pda, tp.id_type_projet
             """
-            conditions = []
-            params = []
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
 
-            if start_date:
-                conditions.append("cf.date_comite_validation >= %s::date")
-                params.append(start_date)
-            if end_date:
-                conditions.append("cf.date_comite_validation <= %s::date")
-                params.append(end_date)
-
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
-
-            query += " GROUP BY p.nom_pda, cf.id_type_projet ORDER BY p.nom_pda"
-
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()  # [(nom_pda, id_type_projet, nb_projets), ...]
-
-            # Transformation en tableau croisé
             result = {}
             for pda_name, type_id, nb in rows:
                 if pda_name not in result:
@@ -1639,10 +1598,7 @@ def projets_par_pda():
                 result[pda_name][type_name] = nb
                 result[pda_name]['total'] += nb
 
-            return jsonify({
-                'types_projet': list(type_map.values()),
-                'data': list(result.values())
-            }), 200
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

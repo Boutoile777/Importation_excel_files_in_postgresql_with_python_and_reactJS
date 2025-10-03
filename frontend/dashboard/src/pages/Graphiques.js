@@ -1,8 +1,8 @@
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList, ComposedChart, Line,
-  PieChart, Pie, Cell, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ScatterChart, Scatter
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
+  PieChart, Pie, Cell
 } from "recharts";
 import html2canvas from "html2canvas";
 
@@ -27,16 +27,35 @@ const Tableaux = () => {
   const pdaRef = useRef();
   const creditsRef = useRef();
 
-  const COLORS = [
-  '#4CB5D4', '#F0B067', '#FFBB28', '#FF8042', '#A569BD', '#FF6384',
-  '#2ECC71', '#3498DB', '#E74C3C', '#1ABC9C', '#9B59B6', '#F39C12',
-  '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#D35400', '#C0392B',
-  '#7D3C98', '#2C3E50', '#45B39D', '#5DADE2', '#AF7AC5', '#F1948A',
-  '#73C6B6', '#F7DC6F', '#82E0AA', '#BB8FCE', '#F0B27A', '#7FB3D5',
-  '#D98880', '#A9DFBF', '#D5DBDB', '#566573', '#D4AC0D', '#1F618D',
-  '#B03A2E', '#117864', '#884EA0', '#641E16'
+const COLORS = [
+  '#42A5F5', '#66BB6A', '#FF7043', '#FFEE58', '#AB47BC', '#26A69A',
+  '#EC407A', '#7E57C2', '#29B6F6', '#D4E157', '#FFA726', '#8D6E63',
+  '#BDBDBD', '#78909C', '#EF5350', '#5C6BC0', '#9CCC65', '#90A4AE',
+  '#FFCA28', '#BA68C8', '#4DD0E1', '#E57373', '#A1887F', '#64B5F6',
+  '#FFB74D', '#F06292', '#C6FF00', '#00E5FF', '#651FFF', '#FF3D00'
 ];
 
+  // --- Transforme les données en tableau croisé dynamique ---
+  const formatTableData = (data, types, keyName = "departement") => {
+    return data.map(row => {
+      const formattedRow = { name: row[keyName], total: 0 };
+      types.forEach(type => {
+        formattedRow[type] = row[type] || 0;
+        formattedRow.total += row[type] || 0;
+      });
+      return formattedRow;
+    });
+  };
+
+  // --- Calcul des totaux pour la dernière ligne ---
+  const calculateTotals = (data, types) => {
+    const totals = {};
+    types.forEach(type => {
+      totals[type] = data.reduce((sum, row) => sum + (row[type] || 0), 0);
+    });
+    totals.total = Object.values(totals).reduce((sum, val) => sum + (typeof val === "number" ? val : 0), 0);
+    return totals;
+  };
 
   const fetchData = async () => {
     if (!startDate || !endDate) {
@@ -46,47 +65,22 @@ const Tableaux = () => {
 
     setLoading(true);
     setErrorMessage("");
+
+    const urls = [
+      { setter: setProjetsDept, typeSetter: setTypesProjetDept, url: "projets-par-departement" },
+      { setter: setPromoteursFiliere, typeSetter: setTypesProjetFiliere, url: "promoteurs-par-filiere" },
+      { setter: setProjetsPDA, typeSetter: setTypesProjetPDA, url: "projets-par-pda" },
+      { setter: setCreditsCommune, typeSetter: setTypesProjetCommune, url: "credits-par-commune" },
+    ];
+
     try {
-      // ✅ Projets par département
-      const resProjets = await fetch(
-        `http://localhost:5000/auth/projets-par-departement?start_date=${startDate}&end_date=${endDate}`,
-        { credentials: "include" }
-      );
-      if (!resProjets.ok) throw new Error("Erreur projets par département");
-      const projetsJson = await resProjets.json();
-      setProjetsDept(projetsJson.data || []);
-      setTypesProjetDept(projetsJson.types_projet || []);
-
-      // ✅ Promoteurs par filière
-      const resPromoteurs = await fetch(
-        `http://localhost:5000/auth/promoteurs-par-filiere?start_date=${startDate}&end_date=${endDate}`,
-        { credentials: "include" }
-      );
-      if (!resPromoteurs.ok) throw new Error("Erreur promoteurs par filière");
-      const promoteursJson = await resPromoteurs.json();
-      setPromoteursFiliere(promoteursJson.data || []);
-      setTypesProjetFiliere(promoteursJson.types_projet || []);
-
-      // ✅ Projets par PDA
-      const resPDA = await fetch(
-        `http://localhost:5000/auth/projets-par-pda?start_date=${startDate}&end_date=${endDate}`,
-        { credentials: "include" }
-      );
-      if (!resPDA.ok) throw new Error("Erreur projets par PDA");
-      const pdaJson = await resPDA.json();
-      setProjetsPDA(pdaJson.data || []);
-      setTypesProjetPDA(pdaJson.types_projet || []);
-
-      // ✅ Crédits par commune
-      const resCredits = await fetch(
-        `http://localhost:5000/auth/credits-par-commune?start_date=${startDate}&end_date=${endDate}`,
-        { credentials: "include" }
-      );
-      if (!resCredits.ok) throw new Error("Erreur crédits par commune");
-      const creditsJson = await resCredits.json();
-      setCreditsCommune(creditsJson.data || []);
-      setTypesProjetCommune(creditsJson.types_projet || []);
-
+      await Promise.all(urls.map(async ({ setter, typeSetter, url }) => {
+        const res = await fetch(`http://localhost:5000/auth/${url}?start_date=${startDate}&end_date=${endDate}`, { credentials: "include" });
+        if (!res.ok) throw new Error(`Erreur ${url}`);
+        const json = await res.json();
+        setter(json.data || []);
+        typeSetter(json.types_projet || []);
+      }));
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -107,20 +101,7 @@ const Tableaux = () => {
     });
   };
 
-  // --- Transforme les données en tableau croisé dynamique ---
-  const formatTableData = (data, types, keyName = "departement") => {
-    const grouped = {};
-    data.forEach((row) => {
-      const key = row[keyName];
-      if (!grouped[key]) grouped[key] = { name: key, total: 0 };
-      types.forEach((type) => {
-        grouped[key][type] = row[type] || 0;
-        grouped[key].total += row[type] || 0;
-      });
-    });
-    return Object.values(grouped);
-  };
-
+  // --- Composant principal ---
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center space-y-12">
       {/* Retour au Dashboard */}
@@ -169,27 +150,30 @@ const Tableaux = () => {
       {loading && <p className="text-center text-lg text-gray-600">Chargement...</p>}
       {errorMessage && <p className="text-center text-red-600">{errorMessage}</p>}
 
-      {/* --- Section 1 : Projets par département --- */}
+      {/* --- Section Projets par département --- */}
       {!loading && projetsDept.length > 0 && (
         <section ref={projetsRef} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
-            Projets par département
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Projets par département</h2>
           <div className="flex flex-col items-center mb-6">
-            <div className="w-full flex justify-center">
-              <BarChart width={700} height={300} data={formatTableData(projetsDept, typesProjetDept)} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {typesProjetDept.map((type, idx) => (
-                  <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
-                    <LabelList dataKey={type} position="top" />
-                  </Bar>
-                ))}
-              </BarChart>
-            </div>
+            <BarChart
+              width={700}
+              height={300}
+              data={formatTableData(projetsDept, typesProjetDept)}
+              margin={{ top: 30, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {typesProjetDept.map((type, idx) => (
+                <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
+                  <LabelList dataKey={type} position="top" />
+                </Bar>
+              ))}
+            </BarChart>
+
+            {/* Tableau */}
             <div className="w-full mt-6 overflow-x-auto">
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
@@ -207,6 +191,15 @@ const Tableaux = () => {
                       <td className="border px-4 py-2">{row.total}</td>
                     </tr>
                   ))}
+                  {/* Ligne Totaux */}
+                  <tr className="bg-gray-200 font-semibold">
+                    <td className="border px-4 py-2">Totaux</td>
+                    {(() => {
+                      const totals = calculateTotals(formatTableData(projetsDept, typesProjetDept), typesProjetDept);
+                      return typesProjetDept.map((type) => <td key={type} className="border px-4 py-2">{totals[type]}</td>);
+                    })()}
+                    <td className="border px-4 py-2">{calculateTotals(formatTableData(projetsDept, typesProjetDept), typesProjetDept).total}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -222,27 +215,30 @@ const Tableaux = () => {
         </section>
       )}
 
-      {/* --- Section 2 : Promoteurs par filière --- */}
+      {/* --- Section Promoteurs par filière --- */}
       {!loading && promoteursFiliere.length > 0 && (
         <section ref={promoteursRef} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
-            Promoteurs par filière
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Promoteurs par filière</h2>
           <div className="flex flex-col items-center mb-6">
-            <div className="w-full flex justify-center">
-              <BarChart width={700} height={300} data={formatTableData(promoteursFiliere, typesProjetFiliere, "filiere")} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {typesProjetFiliere.map((type, idx) => (
-                  <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
-                    <LabelList dataKey={type} position="top" />
-                  </Bar>
-                ))}
-              </BarChart>
-            </div>
+            <BarChart
+              width={700}
+              height={300}
+              data={formatTableData(promoteursFiliere, typesProjetFiliere, "filiere")}
+              margin={{ top: 30, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {typesProjetFiliere.map((type, idx) => (
+                <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
+                  <LabelList dataKey={type} position="top" />
+                </Bar>
+              ))}
+            </BarChart>
+
+            {/* Tableau */}
             <div className="w-full mt-6 overflow-x-auto">
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
@@ -260,6 +256,14 @@ const Tableaux = () => {
                       <td className="border px-4 py-2">{row.total}</td>
                     </tr>
                   ))}
+                  <tr className="bg-gray-200 font-semibold">
+                    <td className="border px-4 py-2">Totaux</td>
+                    {(() => {
+                      const totals = calculateTotals(formatTableData(promoteursFiliere, typesProjetFiliere, "filiere"), typesProjetFiliere);
+                      return typesProjetFiliere.map((type) => <td key={type} className="border px-4 py-2">{totals[type]}</td>);
+                    })()}
+                    <td className="border px-4 py-2">{calculateTotals(formatTableData(promoteursFiliere, typesProjetFiliere, "filiere"), typesProjetFiliere).total}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -275,27 +279,30 @@ const Tableaux = () => {
         </section>
       )}
 
-      {/* --- Section 3 : Projets par PDA --- */}
+      {/* --- Section Projets par PDA --- */}
       {!loading && projetsPDA.length > 0 && (
         <section ref={pdaRef} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
-            Projets par PDA
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Projets par PDA</h2>
           <div className="flex flex-col items-center mb-6">
-            <div className="w-full flex justify-center">
-              <BarChart width={700} height={300} data={formatTableData(projetsPDA, typesProjetPDA, "pda")} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {typesProjetPDA.map((type, idx) => (
-                  <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
-                    <LabelList dataKey={type} position="top" />
-                  </Bar>
-                ))}
-              </BarChart>
-            </div>
+            <BarChart
+              width={700}
+              height={300}
+              data={formatTableData(projetsPDA, typesProjetPDA, "pda")}
+              margin={{ top: 30, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {typesProjetPDA.map((type, idx) => (
+                <Bar key={type} dataKey={type} fill={COLORS[idx % COLORS.length]} name={type}>
+                  <LabelList dataKey={type} position="top" />
+                </Bar>
+              ))}
+            </BarChart>
+
+            {/* Tableau */}
             <div className="w-full mt-6 overflow-x-auto">
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
@@ -313,6 +320,14 @@ const Tableaux = () => {
                       <td className="border px-4 py-2">{row.total}</td>
                     </tr>
                   ))}
+                  <tr className="bg-gray-200 font-semibold">
+                    <td className="border px-4 py-2">Totaux</td>
+                    {(() => {
+                      const totals = calculateTotals(formatTableData(projetsPDA, typesProjetPDA, "pda"), typesProjetPDA);
+                      return typesProjetPDA.map((type) => <td key={type} className="border px-4 py-2">{totals[type]}</td>);
+                    })()}
+                    <td className="border px-4 py-2">{calculateTotals(formatTableData(projetsPDA, typesProjetPDA, "pda"), typesProjetPDA).total}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -328,57 +343,60 @@ const Tableaux = () => {
         </section>
       )}
 
-      {/* --- Section 4 : Crédits par commune --- */}
+      {/* --- Section Crédits par commune --- */}
       {!loading && creditsCommune.length > 0 && (
         <section ref={creditsRef} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">
-            Crédits par commune
-          </h2>
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-full flex justify-center">
-              <PieChart width={800} height={500}>
-                <Pie
-                  data={formatTableData(creditsCommune, typesProjetCommune, "commune")}
-                  dataKey="total"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  fill="#8884d8"
-                  label
-                >
-                  {formatTableData(creditsCommune, typesProjetCommune, "commune").map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-              
-              
+          <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">Crédits accordés par commune</h2>
 
-            </div>
-            <div className="w-full mt-6 overflow-x-auto">
-              <table className="min-w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border px-4 py-2">Commune</th>
-                    {typesProjetCommune.map((type) => <th key={type} className="border px-4 py-2">{type}</th>)}
-                    <th className="border px-4 py-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formatTableData(creditsCommune, typesProjetCommune, "commune").map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-100">
-                      <td className="border px-4 py-2">{row.name}</td>
-                      {typesProjetCommune.map((type) => <td key={type} className="border px-4 py-2">{row[type]}</td>)}
-                      <td className="border px-4 py-2">{row.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Graphique */}
+          <div className="flex justify-center mb-6">
+            <PieChart width={400} height={400}>
+              <Pie
+                data={formatTableData(creditsCommune, typesProjetCommune, "commune")}
+                dataKey="total"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={120}
+                label
+              >
+                {formatTableData(creditsCommune, typesProjetCommune, "commune").map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+            </PieChart>
           </div>
+
+          {/* Tableau */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border px-4 py-2">Commune</th>
+                  {typesProjetCommune.map((type) => <th key={type} className="border px-4 py-2">{type}</th>)}
+                  <th className="border px-4 py-2">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formatTableData(creditsCommune, typesProjetCommune, "commune").map((row, idx) => (
+                  <tr key={idx} className="hover:bg-gray-100">
+                    <td className="border px-4 py-2">{row.name}</td>
+                    {typesProjetCommune.map((type) => <td key={type} className="border px-4 py-2">{row[type]}</td>)}
+                    <td className="border px-4 py-2">{row.total}</td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-200 font-semibold">
+                  <td className="border px-4 py-2">Totaux</td>
+                  {(() => {
+                    const totals = calculateTotals(formatTableData(creditsCommune, typesProjetCommune, "commune"), typesProjetCommune);
+                    return typesProjetCommune.map((type) => <td key={type} className="border px-4 py-2">{totals[type]}</td>);
+                  })()}
+                  <td className="border px-4 py-2">{calculateTotals(formatTableData(creditsCommune, typesProjetCommune, "commune"), typesProjetCommune).total}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <div className="mt-4 text-center">
             <button
               onClick={() => saveSectionAsImage(creditsRef, "credits_par_commune.png")}
@@ -389,6 +407,7 @@ const Tableaux = () => {
           </div>
         </section>
       )}
+
     </div>
   );
 };
