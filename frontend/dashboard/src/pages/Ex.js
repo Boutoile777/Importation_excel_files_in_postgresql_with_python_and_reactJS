@@ -11,7 +11,7 @@ function Facilite() {
   const [afficherInfos, setAfficherInfos] = useState(false);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5000/auth/type_projets')
+    fetch('http://localhost:5000/auth/type_projets')
       .then(response => response.json())
       .then(data => {
         if (Array.isArray(data)) {

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
-  PieChart, Pie, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList, ComposedChart, Line,
+  PieChart, Pie, Cell, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ScatterChart, Scatter
 } from "recharts";
 import html2canvas from "html2canvas";
 
@@ -27,7 +27,16 @@ const Tableaux = () => {
   const pdaRef = useRef();
   const creditsRef = useRef();
 
-  const COLORS = ['#4CB5D4', '#F0B067', '#FFBB28', '#FF8042', '#A569BD', '#FF6384'];
+  const COLORS = [
+  '#4CB5D4', '#F0B067', '#FFBB28', '#FF8042', '#A569BD', '#FF6384',
+  '#2ECC71', '#3498DB', '#E74C3C', '#1ABC9C', '#9B59B6', '#F39C12',
+  '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#D35400', '#C0392B',
+  '#7D3C98', '#2C3E50', '#45B39D', '#5DADE2', '#AF7AC5', '#F1948A',
+  '#73C6B6', '#F7DC6F', '#82E0AA', '#BB8FCE', '#F0B27A', '#7FB3D5',
+  '#D98880', '#A9DFBF', '#D5DBDB', '#566573', '#D4AC0D', '#1F618D',
+  '#B03A2E', '#117864', '#884EA0', '#641E16'
+];
+
 
   const fetchData = async () => {
     if (!startDate || !endDate) {
@@ -327,7 +336,7 @@ const Tableaux = () => {
           </h2>
           <div className="flex flex-col items-center mb-6">
             <div className="w-full flex justify-center">
-              <PieChart width={700} height={300}>
+              <PieChart width={800} height={500}>
                 <Pie
                   data={formatTableData(creditsCommune, typesProjetCommune, "commune")}
                   dataKey="total"
@@ -345,6 +354,8 @@ const Tableaux = () => {
                 <Tooltip />
                 <Legend />
               </PieChart>
+              
+              
 
             </div>
             <div className="w-full mt-6 overflow-x-auto">

@@ -201,7 +201,7 @@ function ProjetsFinancementTable() {
         doc.text(
           `Page ${pageNumber}`,
           doc.internal.pageSize.getWidth() - 20,
-          doc.internal.pageSize.getHeight() - 10
+          doc.internal.pageSize.getHeight() - 100
         );
       },
     });

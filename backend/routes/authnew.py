@@ -17,6 +17,8 @@ from extensions import mail
 from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
+import traceback
+
 
 
 
@@ -884,7 +886,6 @@ def change_password():
 
 
 
-
 @auth_bp.route("/import_excel", methods=["POST"])
 @login_required
 def import_excel():
@@ -896,97 +897,103 @@ def import_excel():
         file = request.files['file']
         nom_fichier = file.filename if file else None
 
-        # 1️⃣ Lecture du fichier Excel
+        # 1️⃣ Lecture Excel
         df = pd.read_excel(file)
         df = df.replace({np.nan: None})
 
-        #Mapping des deux fichiers 
-                
+        # 2️⃣ Mapping des fichiers de type tirage
         mapping_fichier1 = {
-            "Date comité de validation": "date_comite_validation",
-            "N° dossier": "numero",
-            "PDA": "pda",
-            "Nom PSF": "psf",
-            "Département": "departement",
-            "Commune": "commune",
-            "Intitulé du projet": "intitule_projet",
-            "Nom de l'entité": "denomination_entite",
-            "Nom du promoteur": "nom_promoteur",
-            "Sexe": "sexe_promoteur",
-            "Statut juridique": "statut_juridique",
-            "Adresse/contact": "adresse_contact",
-            "NPI": "npi",
-            "Rang/Cycles":"rang_cycle",
-            "Filière": "filiere",
-            "Maillon/type crédit": "maillon_type_credit",
-            "Coût total": "cout_total_projet",
-            "Crédit sollicité": "credit_solicite",
-            "Crédit accordé": "credit_accorde",
-            "Refinancement accordé": "refinancement_accorde",
-            "Statut crédit accordé": "credit_accorde_statut",
-            "Total financement": "total_financement",
-            "Statut dossier": "statut_dossier",
-            "Garantie FNDA accordée":"garantie_fnda_accordee",
-            "Bonification FNDA accordée":"bonification_fnda_accordee",
-            "MOTIF si crédit non accordé":"motif_credit_non_accordee",
-            "Notification":"notification",
-            "Référence si notifié":"reference_si_notifiee",
-            "Date de notification":"date_notification",
-            "Montant décaissé":"montant_decaisse",
-            "Date de création de l'entité":"date_creation_entite"
-        }
-
-        mapping_fichier2 = {
-            "Date comité de validation": "date_comite_validation",
             "N°": "numero",
+            "SFD": "psf",
+            "Référence ligne de refinancement": "reference_ligne_refinancement",
+            "Date accord ligne de refinancement": "date_accord_ligne_refinancement",
+            "N°  de référence de la demande du Tirage": "numero_reference_tirage",
+            "Date de la demande du tirage": "date_tirage",
+            "Date de signature de l'échancier du FNDA (Comité de validation)": "date_comite_validation",
+            "COMMUNE": "commune",
             "PDA": "pda",
-            "Nom SFD": "psf",
-            "Département": "departement",
-            "Commune": "commune",
-            "Objet du crédits": "intitule_projet",
+            "Dates de décaissement": "date_decaissement",
             "Noms du groupe/groupement/MPME/individu/…": "denomination_entite",
-            "Nom du responsable": "nom_promoteur",
-            "NPI": "npi",
-            "Contact": "adresse_contact",
-            "Filière": "filiere",
-            "Type crédits": "maillon_type_credit",
-            "Montant sollicité": "credit_solicite",
-            "Montant accordé": "credit_accorde",
-            "Date de décaissement": "date_decaissement",
+            "Numéro Personnel d'Identification (NPI) du Bénéficiaire": "npi",
             "Noms des bénéficiaires": "nom_beneficiaire",
-            "Nombre de bénéficiaire homme": "nb_beneficiaires_hommes",
-            "Nombre de bénéficiaire femme": "nb_beneficiaires_femmes",
-            "Total bénéficiaire": "total_beneficiaires",
-            "Durée": "duree",
+            "Nom du Responsable": "nom_promoteur",
+            "Contact": "adresse_contact",
+            "NOMBRE BENEFICIAIRE HOMME": "nb_beneficiaires_hommes",
+            "NOMBRE BENEFICIAIRE FEMME": "nb_beneficiaires_femmes",
+            "NOMBRE TOTAL  BENEFICIAIRE": "total_beneficiaires",
+            "OBJET DU CREDIT": "intitule_projet",
+            "Filière concernée par l'objet du crédit": "filiere",
+            "Types de crédits (Production/Transformation/Commercialisation/Mécanisation Agricole …)": "maillon_type_credit",
+            "Garanties fournies par les promoteurs": "garanties_promoteurs",
+            "Rang/cycles": "rang_cycle",
+            "Montants sollicités/étudiés": "credit_solicite",    
+            "Montants accordés par le  SFD ou la Banque": "montant_accorde_sfd_banque",
+            "Montant crédit validé par le FNDA": "montant_credit_valide_fnda",
+            "Garantie Accordée par le FNDA": "garantie_fnda_accordee",
+            "Durées (mois)": "duree",
             "Différé (mois)": "differe_mois",
-            "Date première échéance": "date_premiere_echeance",
-            "Date dernière échéance": "date_derniere_echeance",
-            "Périodicité de remboursement": "periodicite_remboursement",
+            "Taux d'intérêt dégressif": "taux_interet_degressif",
+            "Périodicités de Remboursement": "periodicite_remboursement",
+            "Capital": "capital",
+            "Intérets à payer par les Promoteurs": "interets_promoteurs",
+            "Intérets à payer par le FNDA": "interets_fnda",
+            "Dates premières échéances": "date_premiere_echeance",
+            "Dates dernières échéances": "date_derniere_echeance",
+            "BONIFICATION": "bonification_fnda_accordee",
             "Observations": "observations",
-            "Rang/Cycles": "rang_cycle",
-            "Chiffre d'Affaire annuel": "chiffre_affaires_annuel"
-        }
+        } 
 
-        # 🔄 Conversion explicite de toutes les colonnes de date
+        # Mapping correspondant aux fichiers de Garantie et de Bonification
+
+        # mapping_fichier2 = {
+        #         "DATE COMITE VALIDATION": "date_comite_validation",
+        #         "N°": "numero",
+        #         "PDA": "pda",
+        #         "PSF": "psf",
+        #         "Département": "departement",
+        #         "Commune": "commune",
+        #         "Objet du crédits": "intitule_projet",
+        #         "Noms du groupe/groupement/MPME/individu/…": "denomination_entite",
+        #         "Nom du responsable": "nom_promoteur",
+        #         "NPI": "npi",
+        #         "Contact": "adresse_contact",
+        #         "FILIERE": "filiere",
+        #         "Type crédits": "maillon_type_credit",
+        #         "Montant sollicité": "credit_solicite",
+        #         "Montant accordé": "credit_accorde",
+        #         "Date de décaissement": "date_decaissement",
+        #         "Noms des bénéficiaires": "nom_beneficiaire",
+        #         "Nombre de bénéficiaire homme": "nb_beneficiaires_hommes",
+        #         "Nombre de bénéficiaire femme": "nb_beneficiaires_femmes",
+        #         "Total bénéficiaire": "total_beneficiaires",
+        #         "Durée": "duree",
+        #         "Différé (mois)": "differe_mois",
+        #         "Date première échéance": "date_premiere_echeance",
+        #         "Date dernière échéance": "date_derniere_echeance",
+        #         "Périodicité de remboursement": "periodicite_remboursement",
+        #         "Observations": "observations",
+        #         "Rang/Cycles": "rang_cycle",
+        #         "Chiffre d'Affaire annuel": "chiffre_affaires_annuel"
+        #     }
+
+
+        # 3️⃣ Colonnes date
         date_cols = [
             "date_comite_validation",
             "date_decaissement",
             "date_premiere_echeance",
             "date_derniere_echeance",
             "date_creation_entite",
-            "date_notification"
+            "date_notification",
+            "date_accord_ligne_refinancement",
+            "date_tirage"
         ]
 
-        for col in date_cols:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
-
-        # 2️⃣ Déterminer le type de fichier depuis la session
+        # 4️⃣ Type de fichier depuis la session
         id_type_projet = session.get('id_type_projet')
         if not id_type_projet:
             return jsonify({"error": "Type de projet non sélectionné dans la session."}), 400
 
-        # Récupérer le type de fichier depuis la table type_projet
         conn = get_connection()
         if conn is None:
             return jsonify({"error": "Connexion à la base impossible."}), 500
@@ -998,57 +1005,99 @@ def import_excel():
                 return jsonify({"error": "Type de projet introuvable."}), 400
             type_fichier = result[0]
 
-        # 3️⃣ Choisir le mapping correspondant
+        # 5️⃣ Choisir le mapping
         if type_fichier == "FICHIER 1":
             column_mapping = mapping_fichier1
         elif type_fichier == "FICHIER 2":
             column_mapping = mapping_fichier2
         else:
             return jsonify({"error": f"Type de fichier inconnu : {type_fichier}"}), 400
+        
 
-        # 4️⃣ Renommer les colonnes selon le mapping
+        # 6️⃣ Renommer les colonnes
         df.rename(columns=column_mapping, inplace=True)
+        df = df.replace({np.nan: None})
 
-        # 5️⃣ Vérification des colonnes obligatoires
-        required_columns = list(column_mapping.values())
-        missing_cols = [col for col in required_columns if col not in df.columns]
-        if missing_cols:
-            return jsonify({"error": f"Colonnes manquantes après renommage : {', '.join(missing_cols)}"}), 400
+        # Vérification rapide des colonnes importantes
+        print("=== Colonnes présentes après mapping ===", df.columns.tolist())
 
-        # 6️⃣ Conversion de date si nécessaire
-        if "date_comite_validation" in df.columns and df["date_comite_validation"].dtype in ["float64", "int64"]:
-            df["date_comite_validation"] = pd.to_datetime(
-                df["date_comite_validation"], unit='d', origin='1899-12-30'
-            )
+        if "nom_promoteur" in df.columns and "denomination_entite" in df.columns:
+            print(df[['nom_promoteur', 'denomination_entite']].head(10))
+        else:
+            print("⚠️ Colonnes nom_promoteur / denomination_entite absentes dans ce fichier")
+
+
+
+
+        # 7️⃣ Conversion dates
+        for col in date_cols:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
+
+        # 8️⃣ Conversion numériques et entiers
+        numeric_cols = [
+            "cout_total_projet", "credit_solicite", "credit_accorde", "refinancement_accorde",
+            "total_financement", "montant_decaisse", "chiffre_affaires_annuel",
+            "montant_accorde_sfd_banque", "montant_credit_valide_fnda", "taux_interet_degressif",
+            "capital", "interets_promoteurs", "interets_fnda"
+        ]
+        int_cols = [
+            "rang_cycle", "nb_beneficiaires_hommes", "nb_beneficiaires_femmes",
+            "total_beneficiaires", "duree", "differe_mois"
+        ]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        for col in int_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype(pd.Int64Dtype())
 
         created_by = f"{current_user.prenom} {current_user.nom}"
+        
 
-        # 7️⃣ Boucle d'insertion
+        # 9️⃣ Insertion
         with conn.cursor() as cur:
             cur.execute("TRUNCATE TABLE donnees_importees RESTART IDENTITY CASCADE")
 
             for _, row in df.iterrows():
                 row_dict = row.to_dict()
 
-                # Insertion dans donnees_importees
-                columns = ', '.join(row_dict.keys())
-                placeholders = ', '.join(f"%({k})s" for k in row_dict.keys())
-                cur.execute(f"INSERT INTO donnees_importees ({columns}) VALUES ({placeholders})", row_dict)
+                 # ✅ Remplacer toutes les valeurs NaT/NaN par None pour PostgreSQL
+                for k, v in row_dict.items():
+                        if pd.isna(v):
+                            row_dict[k] = None
 
-                # Insertion promoteur
+                # Sécurité : colonnes existantes dans donnees_importees
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='donnees_importees'")
+                allowed_cols = [c[0] for c in cur.fetchall()]
+                safe_row = {k: row_dict.get(k) for k in row_dict if k in allowed_cols}
+
+                # Insertion donnees_importees
+                if safe_row:
+                    columns = ', '.join(safe_row.keys())
+                    placeholders = ', '.join(f"%({k})s" for k in safe_row.keys())
+                    cur.execute(f"INSERT INTO donnees_importees ({columns}) VALUES ({placeholders})", safe_row)
+
+              # Insertion promoteur (sans doublons)
                 if "nom_promoteur" in row_dict and "denomination_entite" in row_dict:
                     cur.execute("""
-                        INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique, adresse_contact)
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (nom_promoteur, adresse_contact) DO NOTHING
-                    """, (
-                        row_dict.get("nom_promoteur"),
-                        row_dict.get("denomination_entite"),
-                        row_dict.get("sexe_promoteur"),
-                        row_dict.get("statut_juridique"),
-                         row_dict.get("adresse_contact")
+                        SELECT 1 FROM promoteur 
+                        WHERE nom_promoteur = %s AND nom_entite = %s
+                    """, (row_dict.get("nom_promoteur"), row_dict.get("denomination_entite")))
+                    exists = cur.fetchone()
 
-                    ))
+                    if not exists:
+                        cur.execute("""
+                            INSERT INTO promoteur (nom_promoteur, nom_entite, sexe_promoteur, statut_juridique, adresse_contact)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (
+                            row_dict.get("nom_promoteur"),
+                            row_dict.get("denomination_entite"),
+                            row_dict.get("sexe_promoteur"),
+                            row_dict.get("statut_juridique"),
+                            row_dict.get("adresse_contact")
+                        ))
+
 
                 # Insertion PSF
                 if "psf" in row_dict:
@@ -1077,6 +1126,7 @@ def import_excel():
                 cur.execute("SELECT id_filiere FROM filiere WHERE nom_filiere = %s", (row_dict.get("filiere"),))
                 id_filiere = cur.fetchone()[0] if cur.rowcount > 0 else None
 
+                # Ensuite récupérer la commune
                 nom_commune = row_dict.get("commune", "").strip().lower()
                 cur.execute("SELECT id_commune FROM commune WHERE LOWER(TRIM(nom_commune)) = %s", (nom_commune,))
                 id_commune = cur.fetchone()[0] if cur.rowcount > 0 else None
@@ -1084,8 +1134,7 @@ def import_excel():
                 if not id_commune:
                     raise ValueError(f"Commune non trouvée pour : '{row_dict.get('commune')}'")
 
-                # Insertion credit_facilite 
-                
+               # Insertion credit_facilite
                 projet_data = {
                     "date_comite_validation": row_dict.get("date_comite_validation"),
                     "intitule_projet": row_dict.get("intitule_projet"),
@@ -1122,9 +1171,20 @@ def import_excel():
                     "differe_mois": row_dict.get("differe_mois"),
                     "date_premiere_echeance": row_dict.get("date_premiere_echeance"),
                     "date_derniere_echeance": row_dict.get("date_derniere_echeance"),
-                    "periodicite_remboursement": row_dict.get("periodicite_remboursement")
+                    "periodicite_remboursement": row_dict.get("periodicite_remboursement"),
+                    "contrat_signe": row_dict.get("contrat_signe"),
+                    "reference_ligne_refinancement": row_dict.get("reference_ligne_refinancement"),
+                    "date_accord_ligne_refinancement": row_dict.get("date_accord_ligne_refinancement"),
+                    "numero_reference_tirage": row_dict.get("numero_reference_tirage"),
+                    "date_tirage": row_dict.get("date_tirage"),
+                    "garanties_promoteurs": row_dict.get("garanties_promoteurs"),
+                    "montant_accorde_sfd_banque": row_dict.get("montant_accorde_sfd_banque"),
+                    "montant_credit_valide_fnda": row_dict.get("montant_credit_valide_fnda"),
+                    "taux_interet_degressif": row_dict.get("taux_interet_degressif"),
+                    "capital": row_dict.get("capital"),
+                    "interets_promoteurs": row_dict.get("interets_promoteurs"),
+                    "interets_fnda": row_dict.get("interets_fnda")
                 }
-
 
                 cur.execute(f"""
                     INSERT INTO credit_facilite (
@@ -1133,42 +1193,43 @@ def import_excel():
                         {', '.join(f"%({k})s" for k in projet_data.keys())}
                     )
                 """, projet_data)
-
             conn.commit()
 
             # Historique importation
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO historique_importation (nom_fichier, id_type_projet, utilisateur, statut)
-                    VALUES (%s, %s, %s, %s)
-                """, (nom_fichier, id_type_projet, created_by, True))
-                conn.commit()
+            cur.execute("""
+                INSERT INTO historique_importation (nom_fichier, id_type_projet, utilisateur, statut)
+                VALUES (%s, %s, %s, %s)
+            """, (nom_fichier, id_type_projet, created_by, True))
+            conn.commit()
 
         session.pop('id_type_projet', None)
-        return jsonify({"message": "Fichier importé et données insérées avec succès."}), 200
+        return jsonify({"message": "Fichier importé et inséré avec succès."}), 200
 
     except Exception as e:
         if conn:
             conn.rollback()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO historique_importation (nom_fichier, id_type_projet, utilisateur, statut)
-                    VALUES (%s, %s, %s, %s)
-                """, (
-                    nom_fichier if 'nom_fichier' in locals() else None,
-                    id_type_projet if 'id_type_projet' in locals() else None,
-                    created_by if 'created_by' in locals() else None,
-                    False
-                ))
-                conn.commit()
-        except:
-            pass
+        print("=== ERREUR IMPORT ===")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
     finally:
         if conn:
             conn.close()
+
+
+            
+
+            
+
+
+
+
+
+
+
+
+
+
 
 
 
