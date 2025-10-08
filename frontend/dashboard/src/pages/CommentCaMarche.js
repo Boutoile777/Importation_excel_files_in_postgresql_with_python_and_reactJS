@@ -121,7 +121,7 @@ function CommentCaMarche() {
         {/* Boutons côte à côte */}
         <div className="flex flex-wrap gap-4">
           <a
-            href="/asset/classeur.xlsx"
+            href="/excel/File_tirage.xlsx"
             download
             className="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-medium shadow hover:bg-green-700 transition duration-300"
           >
@@ -129,7 +129,7 @@ function CommentCaMarche() {
           </a>
 
           <a
-            href="/asset/class.xlsx"
+            href="/asset/File_bonification_et_garantie.xlsx"
             download
             className="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-medium shadow hover:bg-green-700 transition duration-300"
           >

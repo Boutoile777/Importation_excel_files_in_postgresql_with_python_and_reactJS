@@ -608,9 +608,7 @@ def delete_type_projet(id_type_projet):
 
 
 
-#Routes pour récupérer puis afficher toute les opérations faites
-
-
+# 🔹 Route pour récupérer et afficher tous les projets de financement
 @auth_bp.route('/projets_financement', methods=['GET'])
 @login_required
 def get_projets_financement():
@@ -625,19 +623,15 @@ def get_projets_financement():
                     pf.id_projet,
                     pf.date_comite_validation,
                     pf.intitule_projet,
-                    pf.cout_total_projet,
                     pf.credit_solicite,
                     pf.credit_accorde,
-                    pf.refinancement_accorde,
-                    pf.total_financement,
                     c.nom_commune,
                     f.nom_filiere,
                     ps.nom_psf,
                     p.nom_promoteur,
                     p.nom_entite,
-                    pf.statut_dossier,
-                    pf.credit_accorde_statut,
                     tp.nom_facilite,
+                    pda.nom_pda,
                     pf.created_by,
                     pf.created_at
                 FROM credit_facilite pf
@@ -646,6 +640,7 @@ def get_projets_financement():
                 LEFT JOIN psf ps ON pf.id_psf = ps.id_psf
                 LEFT JOIN promoteur p ON pf.id_promoteur = p.id_promoteur
                 LEFT JOIN type_projet tp ON pf.id_type_projet = tp.id_type_projet
+                LEFT JOIN pda ON c.id_pda = pda.id_pda
                 ORDER BY pf.created_at DESC
             """)
             rows = cur.fetchall()
@@ -655,21 +650,17 @@ def get_projets_financement():
                     'id_projet': r[0],
                     'date_comite_validation': r[1],
                     'intitule_projet': r[2],
-                    'cout_total_projet': r[3],
-                    'credit_solicite': r[4],
-                    'credit_accorde': r[5],
-                    'refinancement_accorde': r[6],
-                    'total_financement': r[7],
-                    'nom_commune': r[8],
-                    'nom_filiere': r[9],
-                    'nom_psf': r[10],
-                    'nom_promoteur': r[11],
-                    'prenom_promoteur': r[12],  # ici c'est nom_entite qu'on utilise
-                    'statut_dossier': r[13],
-                    'credit_accorde_statut': r[14],
-                    'nom_type_projet': r[15],
-                    'created_by': r[16],
-                    'created_at': r[17].strftime('%Y-%m-%d %H:%M:%S') if r[17] else None
+                    'credit_solicite': r[3],
+                    'credit_accorde': r[4],
+                    'nom_commune': r[5],
+                    'nom_filiere': r[6],
+                    'nom_psf': r[7],
+                    'nom_promoteur': r[8],
+                    'nom_entite': r[9],
+                    'nom_type_projet': r[10],
+                    'nom_pda': r[11],
+                    'created_by': r[12],
+                    'created_at': r[13].strftime('%Y-%m-%d %H:%M:%S') if r[13] else None
                 }
                 for r in rows
             ]
@@ -682,6 +673,7 @@ def get_projets_financement():
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
 
 
 #Route pour affichage dynamique des facilités
@@ -701,18 +693,13 @@ def get_projets_par_facilite(id_type_projet):
                     pf.id_projet,
                     pf.date_comite_validation,
                     pf.intitule_projet,
-                    pf.cout_total_projet,
                     pf.credit_solicite,
                     pf.credit_accorde,
-                    pf.refinancement_accorde,
-                    pf.total_financement,
                     c.nom_commune,
                     f.nom_filiere,
                     ps.nom_psf,
                     p.nom_promoteur,
                     p.nom_entite,
-                    pf.statut_dossier,
-                    pf.credit_accorde_statut,
                     tp.nom_facilite,
                     pf.created_by,
                     pf.created_at
@@ -732,21 +719,16 @@ def get_projets_par_facilite(id_type_projet):
                     'id_projet': r[0],
                     'date_comite_validation': r[1],
                     'intitule_projet': r[2],
-                    'cout_total_projet': r[3],
-                    'credit_solicite': r[4],
-                    'credit_accorde': r[5],
-                    'refinancement_accorde': r[6],
-                    'total_financement': r[7],
-                    'nom_commune': r[8],
-                    'nom_filiere': r[9],
-                    'nom_psf': r[10],
-                    'nom_promoteur': r[11],
-                    'prenom_promoteur': r[12],
-                    'statut_dossier': r[13],
-                    'credit_accorde_statut': r[14],
-                    'nom_type_projet': r[15],
-                    'created_by': r[16],
-                    'created_at': r[17].strftime('%Y-%m-%d %H:%M:%S') if r[17] else None
+                    'credit_solicite': r[3],
+                    'credit_accorde': r[4],     
+                    'nom_commune': r[5],
+                    'nom_filiere': r[6],
+                    'nom_psf': r[7],
+                    'nom_promoteur': r[8],
+                    'prenom_promoteur': r[9],
+                    'nom_type_projet': r[10],
+                    'created_by': r[11],
+                    'created_at': r[12].strftime('%Y-%m-%d %H:%M:%S') if r[12] else None
                 }
                 for r in rows
             ]
@@ -927,7 +909,7 @@ def import_excel():
             "Garanties fournies par les promoteurs": "garanties_promoteurs",
             "Rang/cycles": "rang_cycle",
             "Montants sollicités/étudiés": "credit_solicite",    
-            "Montants accordés par le  SFD ou la Banque": "montant_accorde_sfd_banque",
+            "Montants accordés par le  SFD ou la Banque": "credit_accorde",
             "Montant crédit validé par le FNDA": "montant_credit_valide_fnda",
             "Garantie Accordée par le FNDA": "garantie_fnda_accordee",
             "Durées (mois)": "duree",
@@ -1376,6 +1358,14 @@ def add_type_projet():
 
 
 
+
+
+
+
+
+
+
+
 # 3️⃣ Nombre de promoteurs par filière 
 
 @auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
@@ -1597,6 +1587,223 @@ def projets_par_pda():
                 type_name = type_map.get(type_id, "Inconnu")
                 result[pda_name][type_name] = nb
                 result[pda_name]['total'] += nb
+
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+# =====================================================
+# 1️⃣ Montant des crédits accordés par département
+# =====================================================
+@auth_bp.route('/credits-par-departement', methods=['GET'])
+def credits_par_departement():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            query = """
+                SELECT d.nom_departement, tp.id_type_projet, SUM(cf.credit_accorde) AS total_credits
+                FROM type_projet tp
+                CROSS JOIN departement d
+                LEFT JOIN commune c ON c.id_departement = d.id_departement
+                LEFT JOIN credit_facilite cf
+                       ON cf.id_commune = c.id_commune
+                      AND cf.id_type_projet = tp.id_type_projet
+                      AND cf.credit_accorde IS NOT NULL
+                      AND cf.date_comite_validation >= %s::date
+                      AND cf.date_comite_validation <= %s::date
+                GROUP BY d.nom_departement, tp.id_type_projet
+                ORDER BY d.nom_departement, tp.id_type_projet
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            result = {}
+            for dep, type_id, total in rows:
+                if dep not in result:
+                    result[dep] = {'departement': dep, 'total': 0}
+                    for tp in type_map.values():
+                        result[dep][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[dep][type_name] = float(total or 0)
+                result[dep]['total'] += float(total or 0)
+
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+# =====================================================
+# 2️⃣ Montant des crédits accordés par PDA
+# =====================================================
+@auth_bp.route('/credits-par-pda', methods=['GET'])
+def credits_par_pda():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            query = """
+                SELECT p.nom_pda, tp.id_type_projet, SUM(cf.credit_accorde) AS total_credits
+                FROM type_projet tp
+                CROSS JOIN pda p
+                LEFT JOIN commune c ON c.id_pda = p.id_pda
+                LEFT JOIN credit_facilite cf
+                       ON cf.id_commune = c.id_commune
+                      AND cf.id_type_projet = tp.id_type_projet
+                      AND cf.credit_accorde IS NOT NULL
+                      AND cf.date_comite_validation >= %s::date
+                      AND cf.date_comite_validation <= %s::date
+                GROUP BY p.nom_pda, tp.id_type_projet
+                ORDER BY p.nom_pda, tp.id_type_projet
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            result = {}
+            for pda_name, type_id, total in rows:
+                if pda_name not in result:
+                    result[pda_name] = {'pda': pda_name, 'total': 0}
+                    for tp in type_map.values():
+                        result[pda_name][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[pda_name][type_name] = float(total or 0)
+                result[pda_name]['total'] += float(total or 0)
+
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+# =====================================================
+# 3️⃣ Montant des crédits accordés par filière
+# =====================================================
+@auth_bp.route('/credits-par-filiere', methods=['GET'])
+def credits_par_filiere():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            query = """
+                SELECT f.nom_filiere, cf.id_type_projet, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN filiere f ON cf.id_filiere = f.id_filiere
+                WHERE cf.credit_accorde IS NOT NULL
+                  AND cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation <= %s::date
+                GROUP BY f.nom_filiere, cf.id_type_projet
+                ORDER BY f.nom_filiere, cf.id_type_projet
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            result = {}
+            for filiere, type_id, total in rows:
+                if filiere not in result:
+                    result[filiere] = {'filiere': filiere, 'total': 0}
+                    for tp in type_map.values():
+                        result[filiere][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[filiere][type_name] = float(total or 0)
+                result[filiere]['total'] += float(total or 0)
+
+            return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+# =====================================================
+# 4️⃣ Nombre de projets financés par commune
+# =====================================================
+@auth_bp.route('/projets-par-commune', methods=['GET'])
+def projets_par_commune():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_type_projet, nom_facilite FROM type_projet ORDER BY nom_facilite")
+            types_projet = cur.fetchall()
+            type_map = {tp[0]: tp[1] for tp in types_projet}
+
+            query = """
+                SELECT c.nom_commune, tp.id_type_projet, COUNT(cf.id_projet) AS nb_projets
+                FROM type_projet tp
+                CROSS JOIN commune c
+                LEFT JOIN credit_facilite cf
+                       ON cf.id_commune = c.id_commune
+                      AND cf.id_type_projet = tp.id_type_projet
+                      AND cf.date_comite_validation >= %s::date
+                      AND cf.date_comite_validation <= %s::date
+                GROUP BY c.nom_commune, tp.id_type_projet
+                ORDER BY c.nom_commune, tp.id_type_projet
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            result = {}
+            for commune, type_id, nb in rows:
+                if commune not in result:
+                    result[commune] = {'commune': commune, 'total': 0}
+                    for tp in type_map.values():
+                        result[commune][tp] = 0
+                type_name = type_map.get(type_id, "Inconnu")
+                result[commune][type_name] = nb
+                result[commune]['total'] += nb
 
             return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
 

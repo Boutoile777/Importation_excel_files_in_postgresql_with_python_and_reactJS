@@ -34,17 +34,14 @@ const customStyles = {
 const colonnes = [
   { name: 'Date Comité', selector: row => row.date_comite_validation, sortable: true, minWidth: '180px' },
   { name: 'Intitulé Projet', selector: row => row.intitule_projet, sortable: true, minWidth: '250px', wrap: true },
-  { name: 'Coût Total', selector: row => row.cout_total_projet ? Number(row.cout_total_projet).toLocaleString() : '', sortable: true, minWidth: '140px' },
-  { name: 'Crédit Solicité', selector: row => row.credit_solicite ? Number(row.credit_solicite).toLocaleString() : '', sortable: true, minWidth: '140px' },
-  { name: 'Crédit Accordé', selector: row => row.credit_accorde ? Number(row.credit_accorde).toLocaleString() : '', sortable: true, minWidth: '140px' },
-  { name: 'Refinancement Accordé', selector: row => row.refinancement_accorde ? Number(row.refinancement_accorde).toLocaleString() : '', sortable: true, minWidth: '170px' },
-  { name: 'Total Financement', selector: row => row.total_financement ? Number(row.total_financement).toLocaleString() : '', sortable: true, minWidth: '160px' },
+  { name: 'Crédit Solicité', selector: row => row.credit_solicite ? Number(row.credit_solicite).toLocaleString() : '', sortable: true, minWidth: '160px' },
+  { name: 'Crédit Accordé', selector: row => row.credit_accorde ? Number(row.credit_accorde).toLocaleString() : '', sortable: true, minWidth: '160px' },
   { name: 'Commune', selector: row => row.nom_commune, sortable: true, minWidth: '120px' },
   { name: 'Filière', selector: row => row.nom_filiere, sortable: true, minWidth: '120px' },
   { name: 'PSF', selector: row => row.nom_psf, sortable: true, minWidth: '120px' },
   { name: 'Promoteur', selector: row => row.nom_promoteur , sortable: true, minWidth: '180px' },
-  { name: 'Statut Dossier', selector: row => row.statut_dossier, sortable: true, minWidth: '150px' },
-  { name: 'Crédit Accordé Statut', selector: row => row.credit_accorde_statut, sortable: true, minWidth: '170px' },
+  { name: 'Entité', selector: row => row.nom_entite, sortable: true, minWidth: '150px' },
+  { name: 'PDA', selector: row => row.nom_pda, sortable: true, minWidth: '120px' },
   { name: 'Type projet', selector: row => row.nom_type_projet, sortable: true, minWidth: '150px' },
   { name: 'Créé le', selector: row => row.created_at, sortable: true, minWidth: '190px' },
   { name: 'Créé par', selector: row => row.created_by, sortable: true, minWidth: '220px' },
@@ -137,17 +134,14 @@ function ProjetsFinancementTable() {
     const keyMap = {
       'Date Comité': 'date_comite_validation',
       'Intitulé Projet': 'intitule_projet',
-      'Coût Total': 'cout_total_projet',
       'Crédit Solicité': 'credit_solicite',
       'Crédit Accordé': 'credit_accorde',
-      'Refinancement Accordé': 'refinancement_accorde',
-      'Total Financement': 'total_financement',
       'Commune': 'nom_commune',
       'Filière': 'nom_filiere',
       'PSF': 'nom_psf',
-      'Promoteur': null,
-      'Statut Dossier': 'statut_dossier',
-      'Crédit Accordé Statut': 'credit_accorde_statut',
+      'Promoteur': 'nom_promoteur',
+      'Entité': 'nom_entite',
+      'PDA': 'nom_pda',
       'Type projet': 'nom_type_projet',
       'Créé le': 'created_at',
       'Créé par': 'created_by',
@@ -197,7 +191,7 @@ function ProjetsFinancementTable() {
       },
       didDrawPage: data => {
         const pageNumber = doc.internal.getNumberOfPages();
-        doc.setFontSize(10);
+        doc.setFontSize(100);
         doc.text(
           `Page ${pageNumber}`,
           doc.internal.pageSize.getWidth() - 20,
@@ -336,6 +330,8 @@ function ProjetsFinancementTable() {
           columns={colonnes}
           data={filteredData}
           pagination
+          paginationPerPage={100} // ✅ Nombre de lignes par page par défaut
+          paginationRowsPerPageOptions={[25, 50, 100, 200, 500]} // ✅ Choix de pagination
           fixedHeader
           fixedHeaderScrollHeight="600px"
           highlightOnHover
@@ -344,6 +340,7 @@ function ProjetsFinancementTable() {
           noHeader
           noDataComponent={<NoDataMessage />}
         />
+
       </div>
     </div>
   );

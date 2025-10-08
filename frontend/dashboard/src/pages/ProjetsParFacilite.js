@@ -5,7 +5,7 @@ import { FiInbox } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logo from '../assets/logo.png';   // vérifie le chemin ou base64
+import logo from '../assets/logo.png'; // ⚠️ Assure-toi du chemin
 
 /* ---------- Styles personnalisés ---------- */
 const customStyles = {
@@ -33,29 +33,31 @@ const customStyles = {
   },
 };
 
-/* ---------- Colonnes (sans Type Projet) ---------- */
+/* ---------- Colonnes ---------- */
 const colonnes = [
   { name: 'Date Comité', selector: r => r.date_comite_validation, sortable: true, minWidth: '150px' },
   { name: 'Intitulé Projet', selector: r => r.intitule_projet, sortable: true, minWidth: '250px' },
-  { name: 'Coût Total', selector: r => r.cout_total_projet ? Number(r.cout_total_projet).toLocaleString() : '', sortable: true, minWidth: '140px' },
   { name: 'Crédit Solicité', selector: r => r.credit_solicite ? Number(r.credit_solicite).toLocaleString() : '', sortable: true, minWidth: '140px' },
   { name: 'Crédit Accordé', selector: r => r.credit_accorde ? Number(r.credit_accorde).toLocaleString() : '', sortable: true, minWidth: '140px' },
-  { name: 'Refinancement Accordé', selector: r => r.refinancement_accorde ? Number(r.refinancement_accorde).toLocaleString() : '', sortable: true, minWidth: '170px' },
-  { name: 'Total Financement', selector: r => r.total_financement ? Number(r.total_financement).toLocaleString() : '' , sortable: true, minWidth: '160px' },
   { name: 'Commune', selector: r => r.nom_commune, sortable: true, minWidth: '120px' },
   { name: 'Filière', selector: r => r.nom_filiere, sortable: true, minWidth: '120px' },
   { name: 'PSF', selector: r => r.nom_psf, sortable: true, minWidth: '120px' },
-  { name: 'Promoteur', selector: r => `${r.nom_promoteur ?? ''} `.trim(), sortable: true, minWidth: '180px', wrap: true },
-  { name: 'Statut Dossier', selector: r => r.statut_dossier, sortable: true, minWidth: '150px' },
-  { name: 'Crédit Accordé Statut', selector: r => r.credit_accorde_statut, sortable: true, minWidth: '80px' , wrap: true },
-  { name: 'Créé le', selector: r => r.created_at , sortable: true, minWidth: '170px', wrap: true  },
+  { name: 'Promoteur', selector: r => `${r.nom_promoteur ?? ''}`.trim(), sortable: true, minWidth: '180px' },
+  { name: 'Créé le', selector: r => r.created_at , sortable: true, minWidth: '170px' },
   { name: 'Créé par', selector: r => r.created_by, sortable: true, minWidth: '150px' },
 ];
 
 function ProjetsParFacilite() {
   const { id_type_projet } = useParams();
   const [projets, setProjets] = useState([]);
-  const [filtered, setFiltered] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [filters, setFilters] = useState({
+    nom_commune: '',
+    nom_filiere: '',
+    nom_psf: '',
+    nom_promoteur: '',
+    intitule_projet: '',
+  });
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,26 +67,46 @@ function ProjetsParFacilite() {
     setLoading(true);
     fetch(`http://localhost:5000/auth/${id_type_projet}`, { credentials: 'include' })
       .then(r => { if (!r.ok) throw new Error('Erreur de chargement'); return r.json(); })
-      .then(d => { setProjets(d); setFiltered(d); setLoading(false); })
+      .then(d => { setProjets(d); setFilteredData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [id_type_projet]);
 
-  /* --- Recherche full‑text --- */
+  /* --- Application des filtres et recherche --- */
   useEffect(() => {
-    if (!searchText) { setFiltered(projets); return; }
-    const q = searchText.toLowerCase();
-    setFiltered(
-      projets.filter(p =>
-        Object.values(p).some(v => v?.toString().toLowerCase().includes(q))
-      )
-    );
-  }, [searchText, projets]);
+    let temp = projets;
+
+    if (filters.nom_commune)
+      temp = temp.filter(r => r.nom_commune === filters.nom_commune);
+
+    if (filters.nom_filiere)
+      temp = temp.filter(r => r.nom_filiere === filters.nom_filiere);
+
+    if (filters.nom_psf)
+      temp = temp.filter(r => r.nom_psf === filters.nom_psf);
+
+    if (filters.nom_promoteur)
+      temp = temp.filter(r => r.nom_promoteur?.toLowerCase().includes(filters.nom_promoteur.toLowerCase()));
+
+    if (filters.intitule_projet)
+      temp = temp.filter(r => r.intitule_projet?.toLowerCase().includes(filters.intitule_projet.toLowerCase()));
+
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      temp = temp.filter(r => Object.values(r).some(v => v?.toString().toLowerCase().includes(q)));
+    }
+
+    setFilteredData(temp);
+  }, [filters, searchText, projets]);
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  };
 
   /* --- Export Excel --- */
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filtered);
+    const ws = XLSX.utils.json_to_sheet(filteredData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Facilité_${id_type_projet}`);
+    XLSX.utils.book_append_sheet(wb, ws, `Facilite_${id_type_projet}`);
     XLSX.writeFile(wb, `facilite_${id_type_projet}.xlsx`);
   };
 
@@ -93,45 +115,10 @@ function ProjetsParFacilite() {
     const doc = new jsPDF('l', 'mm', 'a4');
     const tableColumn = colonnes.map(c => c.name);
 
-    const keyMap = {
-      'Date Comité': 'date_comite_validation',
-      'Intitulé Projet': 'intitule_projet',
-      'Coût Total': 'cout_total_projet',
-      'Crédit Solicité': 'credit_solicite',
-      'Crédit Accordé': 'credit_accorde',
-      'Refinancement Accordé': 'refinancement_accorde',
-      'Total Financement': 'total_financement',
-      'Commune': 'nom_commune',
-      'Filière': 'nom_filiere',
-      'PSF': 'nom_psf',
-      'Promoteur': null,  // on gère à part si besoin
-      'Statut Dossier': 'statut_dossier',
-      'Crédit Accordé Statut': 'credit_accorde_statut',
-      'Créé le': 'created_at',
-      'Créé par': 'created_by',
-    };
-
-    const montantKeys = [
-      'cout_total_projet',
-      'credit_solicite',
-      'credit_accorde',
-      'refinancement_accorde',
-      'total_financement',
-    ];
-
-    const tableRows = filtered.map(row =>
+    const tableRows = filteredData.map(row =>
       colonnes.map(col => {
-        if (col.name === 'Promoteur') {
-          return `${row.nom_promoteur ?? ''}`.trim();
-        }
-        const key = keyMap[col.name];
-        if (key && row[key] !== undefined && row[key] !== null) {
-          if (montantKeys.includes(key)) {
-            return Number(row[key]);  // nombre brut, sans formatage toLocaleString
-          }
-          return row[key].toString();
-        }
-        return '';
+        const key = col.selector(row);
+        return key ?? '';
       })
     );
 
@@ -145,17 +132,11 @@ function ProjetsParFacilite() {
       startY: 25,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [46, 125, 50], textColor: 255 },
-      didDrawPage() {
-        const p = doc.internal.getNumberOfPages();
-        doc.setFontSize(10);
-        doc.text(`Page ${p}`, doc.internal.pageSize.getWidth() - 20, doc.internal.pageSize.getHeight() - 10);
-      },
     });
 
     doc.save(`facilite_${id_type_projet}.pdf`);
   };
 
-  /* --- Composant "pas de données" --- */
   const NoData = () => (
     <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">
       <FiInbox size={48} className="mb-4 text-green-700" />
@@ -168,9 +149,8 @@ function ProjetsParFacilite() {
     </div>
   );
 
-  /* --- États particuliers --- */
   if (loading) return <div className="p-6 text-center text-gray-700">Chargement…</div>;
-  if (error) return <div className="p-6 text-center text-red-600">Erreur : {error}</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Erreur : {error}</div>;
 
   /* ---------- Rendu ---------- */
   return (
@@ -179,31 +159,64 @@ function ProjetsParFacilite() {
         Projets – Facilité {id_type_projet}
       </h2>
 
-      {/* Barre de recherche + exports */}
+      {/* 🔹 Barre de recherche + export */}
       <div className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
         <input
           type="text"
-          placeholder="Rechercher un projet…"
+          placeholder="Rechercher un projet..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           className="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <div className="flex gap-2">
           <button onClick={exportExcel} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-            Exporter Excel
+            Excel
           </button>
           <button onClick={exportPDF} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-            Exporter PDF
+            PDF
           </button>
         </div>
       </div>
 
-      {/* Tableau */}
+      {/* 🔹 Filtres */}
+      <div className="bg-white shadow-md rounded-lg p-4 mb-6 border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-700 mb-3">Filtres avancés</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <select value={filters.nom_commune} onChange={e => handleFilterChange('nom_commune', e.target.value)} className="px-3 py-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500">
+            <option value="">Choisir une commune</option>
+            {[...new Set(projets.map(p => p.nom_commune))].filter(Boolean).map(c => <option key={c}>{c}</option>)}
+          </select>
+
+          <select value={filters.nom_filiere} onChange={e => handleFilterChange('nom_filiere', e.target.value)} className="px-3 py-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500">
+            <option value="">Choisir une filière</option>
+            {[...new Set(projets.map(p => p.nom_filiere))].filter(Boolean).map(f => <option key={f}>{f}</option>)}
+          </select>
+
+          <select value={filters.nom_psf} onChange={e => handleFilterChange('nom_psf', e.target.value)} className="px-3 py-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500">
+            <option value="">Choisir un PSF</option>
+            {[...new Set(projets.map(p => p.nom_psf))].filter(Boolean).map(psf => <option key={psf}>{psf}</option>)}
+          </select>
+
+          <input
+            type="text"
+            placeholder="Nom promoteur..."
+            value={filters.nom_promoteur}
+            onChange={e => handleFilterChange('nom_promoteur', e.target.value)}
+            className="px-3 py-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+      </div>
+
+      {/* 🔹 Tableau */}
       <div className="overflow-x-auto">
         <DataTable
           columns={colonnes}
-          data={filtered}
+          data={filteredData}
           pagination
+          paginationPerPage={50}
+          paginationRowsPerPageOptions={[25, 50, 100, 200]}
+          fixedHeader
+          fixedHeaderScrollHeight="600px"
           highlightOnHover
           responsive
           customStyles={customStyles}
