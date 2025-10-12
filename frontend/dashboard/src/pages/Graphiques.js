@@ -1,315 +1,382 @@
+// 📁 Tableaux.jsx
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList
+  ResponsiveContainer, PieChart, Pie, Cell, Tooltip
 } from "recharts";
 import html2canvas from "html2canvas";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import { Download, FileSpreadsheet, Home } from "lucide-react";
 
-// --------------------- Helpers ---------------------
-const formatNumber = (value) => {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "0";
-  return new Intl.NumberFormat('fr-FR').format(n);
-};
+const COLORS = [
+  '#42A5F5','#66BB6A','#FF7043','#FFEE58','#AB47BC','#26A69A','#EC407A','#7E57C2',
+  '#29B6F6','#D4E157','#FFA726','#8D6E63','#BDBDBD','#78909C','#EF5350','#5C6BC0',
+  '#9CCC65','#90A4AE','#FFCA28','#BA68C8','#4DD0E1','#E57373','#A1887F','#64B5F6',
+  '#FFB74D','#F06292','#C6FF00','#00E5FF','#651FFF','#FF3D00'
+];
 
-const formatMontant = (value) => {
-  if (value === null || value === undefined || value === "") return "0 FCFA";
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "0 FCFA";
-  return `${new Intl.NumberFormat('fr-FR').format(n)} FCFA`;
-};
+// Utils
+const fmtNum = v => new Intl.NumberFormat('fr-FR').format(Number(v) || 0);
+const fmtFCFA = v => `${fmtNum(v)} FCFA`;
+const merge = (a = [], b = []) => [...new Set([...(a || []), ...(b || [])])];
+const totals = (data, types) =>
+  types.reduce((acc, t) => ({ ...acc, [t]: data.reduce((s, r) => s + (+r[t] || 0), 0) }), { total: data.reduce((s, r) => s + (+r.total || 0), 0) });
+const fmtData = (raw = [], types = [], key = "departement") =>
+  raw.map(r => ({
+    name: r[key] || r.name || "",
+    ...types.reduce((acc, t) => ({ ...acc, [t]: +r[t] || 0 }), {}),
+    total: types.reduce((s, t) => s + (+r[t] || 0), 0)
+  }));
 
-const mergeTypes = (typesA = [], typesB = []) => {
-  const merged = [];
-  (typesA || []).forEach(t => { if (!merged.includes(t)) merged.push(t); });
-  (typesB || []).forEach(t => { if (!merged.includes(t)) merged.push(t); });
-  return merged;
-};
+const SectionEmpty = ({ title }) => (
+  <div className="p-6 text-center text-gray-500 italic">
+    <p className="text-lg font-medium">{title}</p>
+    <p className="mt-2">Aucune donnée disponible pour la période sélectionnée.</p>
+  </div>
+);
 
-const formatTableData = (rawData = [], types = [], keyName = "departement") => {
-  if (!Array.isArray(rawData)) return [];
-  return rawData.map(row => {
-    const displayName = row[keyName] ?? row.name ?? "";
-    const formatted = { name: displayName, total: 0 };
-    types.forEach(type => {
-      const val = Number(row[type]) || 0;
-      formatted[type] = val;
-      formatted.total += val;
-    });
-    return formatted;
-  });
-};
-
-const calculateTotals = (data = [], types = []) => {
-  const totals = {};
-  types.forEach(type => { totals[type] = (data || []).reduce((s, r) => s + (Number(r[type]) || 0), 0); });
-  totals.total = Object.values(totals).reduce((s, v) => s + (typeof v === "number" ? v : 0), 0);
-  return totals;
-};
-
-// --------------------- Component ---------------------
 const Tableaux = () => {
   const navigate = useNavigate();
-
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const [deptProjets, setDeptProjets] = useState([]);
-  const [commProjets, setCommProjets] = useState([]);
-  const [filProjets, setFilProjets] = useState([]);
-  const [pdaProjets, setPdaProjets] = useState([]);
-
-  const [deptCredits, setDeptCredits] = useState([]);
-  const [commCredits, setCommCredits] = useState([]);
-  const [filCredits, setFilCredits] = useState([]);
-  const [pdaCredits, setPdaCredits] = useState([]);
-
-  const [typesDeptCount, setTypesDeptCount] = useState([]);
-  const [typesDeptCredit, setTypesDeptCredit] = useState([]);
-  const [typesCommCount, setTypesCommCount] = useState([]);
-  const [typesCommCredit, setTypesCommCredit] = useState([]);
-  const [typesFilCount, setTypesFilCount] = useState([]);
-  const [typesFilCredit, setTypesFilCredit] = useState([]);
-  const [typesPdaCount, setTypesPdaCount] = useState([]);
-  const [typesPdaCredit, setTypesPdaCredit] = useState([]);
-
+  const [dates, setDates] = useState({ start: "", end: "" });
   const [loading, setLoading] = useState(false);
-  const [globalError, setGlobalError] = useState("");
-
-  const deptRef = useRef();
-  const commRef = useRef();
-  const filRef = useRef();
-  const pdaRef = useRef();
-
-  const COLORS = [
-    '#42A5F5','#66BB6A','#FF7043','#FFEE58','#AB47BC','#26A69A','#EC407A','#7E57C2',
-    '#29B6F6','#D4E157','#FFA726','#8D6E63','#BDBDBD','#78909C','#EF5350','#5C6BC0',
-    '#9CCC65','#90A4AE','#FFCA28','#BA68C8','#4DD0E1','#E57373','#A1887F','#64B5F6',
-    '#FFB74D','#F06292','#C6FF00','#00E5FF','#651FFF','#FF3D00'
-  ];
-
+  const [err, setErr] = useState("");
   const base = "http://localhost:5000/auth";
 
-  const fetchEndpoint = async (path) => {
-    const url = `${base}/${path}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+  const sections = {
+    departement: useRef(), commune: useRef(),
+    filiere: useRef(), pda: useRef()
+  };
+
+  const [data, setData] = useState({
+    departement: { projets: [], credits: [], tProj: [], tCred: [] },
+    commune: { projets: [], credits: [], tProj: [], tCred: [] },
+    filiere: { projets: [], credits: [], tProj: [], tCred: [] },
+    pda: { projets: [], credits: [], tProj: [], tCred: [] }
+  });
+
+  const fetchData = async (path) => {
+    const url = `${base}/${path}?start_date=${dates.start}&end_date=${dates.end}`;
     const res = await fetch(url, { credentials: "include" });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Erreur sur ${path} : ${res.status} ${txt}`);
-    }
-    return await res.json();
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   };
 
-  const fetchAll = async () => {
-    if (!startDate || !endDate) { setGlobalError("Veuillez choisir une date de début et une date de fin."); return; }
-    setGlobalError(""); setLoading(true);
-
-    const endpoints = [
-      {key: 'deptCount', path: 'projets-par-departement'},
-      {key: 'deptCredit', path: 'credits-par-departement'},
-      {key: 'commCount', path: 'projets-par-commune'},
-      {key: 'commCredit', path: 'credits-par-commune'},
-      {key: 'filCount', path: 'promoteurs-par-filiere'},
-      {key: 'filCredit', path: 'credits-par-filiere'},
-      {key: 'pdaCount', path: 'projets-par-pda'},
-      {key: 'pdaCredit', path: 'credits-par-pda'}
-    ];
-
+  const loadAll = async () => {
+    if (!dates.start || !dates.end) return setErr("Veuillez choisir les deux dates.");
+    setErr(""); setLoading(true);
     try {
-      const promises = endpoints.map(e => fetchEndpoint(e.path).then(
-        data => ({ status: "fulfilled", key: e.key, data }),
-        err => ({ status: "rejected", key: e.key, error: err })
+      const endpoints = [
+        ["departement", "projets-par-departement", "credits-par-departement"],
+        ["commune", "projets-par-commune", "credits-par-commune"],
+        ["filiere", "promoteurs-par-filiere", "credits-par-filiere"],
+        ["pda", "projets-par-pda", "credits-par-pda"]
+      ];
+
+      const results = await Promise.all(endpoints.flatMap(([k, p1, p2]) =>
+        [fetchData(p1), fetchData(p2)]
       ));
-      const results = await Promise.all(promises);
 
-      // Reset previous
-      setDeptProjets([]); setDeptCredits([]);
-      setCommProjets([]); setCommCredits([]);
-      setFilProjets([]); setFilCredits([]);
-      setPdaProjets([]); setPdaCredits([]);
-
-      results.forEach(r => {
-        if (r.status === "fulfilled") {
-          const { key, data: payload } = r;
-          switch (key) {
-            case 'deptCount': setDeptProjets(payload.data || []); setTypesDeptCount(payload.types_projet || []); break;
-            case 'deptCredit': setDeptCredits(payload.data || []); setTypesDeptCredit(payload.types_projet || []); break;
-            case 'commCount': setCommProjets(payload.data || []); setTypesCommCount(payload.types_projet || []); break;
-            case 'commCredit': setCommCredits(payload.data || []); setTypesCommCredit(payload.types_projet || []); break;
-            case 'filCount': setFilProjets(payload.data || []); setTypesFilCount(payload.types_projet || []); break;
-            case 'filCredit': setFilCredits(payload.data || []); setTypesFilCredit(payload.types_projet || []); break;
-            case 'pdaCount': setPdaProjets(payload.data || []); setTypesPdaCount(payload.types_projet || []); break;
-            case 'pdaCredit': setPdaCredits(payload.data || []); setTypesPdaCredit(payload.types_projet || []); break;
-            default: break;
-          }
-        } else { console.error("API error:", r.key, r.error); }
+      const newData = {};
+      endpoints.forEach(([key], i) => {
+        const [proj, cred] = [results[i * 2], results[i * 2 + 1]];
+        newData[key] = {
+          projets: proj.data || [], credits: cred.data || [],
+          tProj: proj.types_projet || [], tCred: cred.types_projet || []
+        };
       });
-
-    } catch (err) {
-      console.error(err); setGlobalError("Erreur lors du chargement des données.");
-    } finally { setLoading(false); }
+      setData(newData);
+    } catch (e) {
+      console.error(e);
+      setErr("Erreur de chargement des données.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveSectionAsImage = (ref, fileName) => {
-    if (!ref || !ref.current) return;
-    html2canvas(ref.current, { ignoreElements: el => el.tagName==="BUTTON", backgroundColor:"#fff" })
-      .then(canvas => {
-        const link = document.createElement("a");
-        link.download = fileName;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-      });
+  const saveImage = (ref, name) => ref.current && html2canvas(ref.current, {
+    ignoreElements: el => el.tagName === "BUTTON", backgroundColor: "#fff"
+  }).then(canvas => {
+    const a = document.createElement("a");
+    a.download = `${name}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  });
+
+  // Export Excel
+  const exportToExcel = (rows, filename) => {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Données");
+    const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    saveAs(blob, `${filename}.xlsx`);
   };
 
-  const SectionNoData = ({ title }) => (
-    <div className="p-6 text-center text-gray-600">
-      <p className="text-lg font-medium">{title}</p>
-      <p className="mt-2">Aucune donnée trouvée pour la période sélectionnée. Les projets dorment encore 😴</p>
-      <p className="mt-2 text-sm text-gray-400">Essayez une autre plage de dates.</p>
-    </div>
-  );
+  const renderSection = (key, title) => {
+    const { projets, credits, tProj, tCred } = data[key];
+    const merged = merge(tProj, tCred);
+    const pData = fmtData(projets, merged, key);
+    const cData = fmtData(credits, merged, key);
+    const pTot = totals(pData, merged);
+    const cTot = totals(cData, merged);
 
-  const renderSection = (ref, title, projets, credits, typesCount, typesCredit, keyName) => {
-    const mergedTypes = mergeTypes(typesCredit, typesCount);
-    const tableProjetsData = formatTableData(projets, mergedTypes, keyName);
-    const tableCreditsData = formatTableData(credits, mergedTypes, keyName);
+    if (!pData.length && !cData.length) return <SectionEmpty title={title} />;
+
+    const renderTable = (rows, tot, fmt, label, fname) => (
+      <div className="overflow-x-auto mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold text-gray-700">{label}</h3>
+          <button
+            onClick={() => exportToExcel(rows, fname)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md shadow-sm text-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Exporter en Excel
+          </button>
+        </div>
+        <table className="min-w-full border border-gray-300 rounded-lg overflow-hidden">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border px-4 py-2 text-left capitalize">{key}</th>
+              {merged.map(t => <th key={t} className="border px-4 py-2 text-right">{t}</th>)}
+              <th className="border px-4 py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="odd:bg-white even:bg-gray-50 hover:bg-green-50 transition">
+                <td className="border px-4 py-2">{r.name}</td>
+                {merged.map(t => <td key={t} className="border px-4 py-2 text-right">{fmt(r[t])}</td>)}
+                <td className="border px-4 py-2 text-right font-semibold text-green-700">{fmt(r.total)}</td>
+              </tr>
+            ))}
+            <tr className="bg-gray-100 font-semibold">
+              <td className="border px-4 py-2">Totaux</td>
+              {merged.map(t => <td key={t} className="border px-4 py-2 text-right">{fmt(tot[t])}</td>)}
+              <td className="border px-4 py-2 text-right">{fmt(tot.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
 
     return (
-      <section ref={ref} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg">
-        <h2 className="text-2xl font-bold text-gray-700 mb-4 text-center">{title}</h2>
-        { (credits.length === 0 && projets.length === 0) ? (
-          <SectionNoData title={title} />
-        ) : (
-          <>
-            <div className="w-full mb-6" style={{ height: 360 }}>
+      <section ref={sections[key]} className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-md border border-gray-200">
+        <h2 className="text-2xl font-bold text-green-700 mb-4 text-center">{title}</h2>
+
+        {/* Graphiques pour filière, PDA, département */}
+        {key !== "commune" && cData.length > 0 && (
+          <div className="flex justify-center items-center mb-6 gap-6 flex-wrap">
+            <div style={{ width: 400, height: 400 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tableCreditsData} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tickFormatter={formatNumber} />
-                  <Tooltip formatter={(v) => [formatMontant(v), ""]} />
-                  <Legend />
-                  {mergedTypes.map((type, idx) => (
-                    <Bar key={type} dataKey={type} name={type} fill={COLORS[idx % COLORS.length]}>
-                      <LabelList dataKey={type} position="top" formatter={formatNumber} />
-                    </Bar>
-                  ))}
-                </BarChart>
+                <PieChart>
+                  <Pie
+                    data={cData}
+                    dataKey="total"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={130}
+                    label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
+                  >
+                    {cData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={v => fmtFCFA(v)} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Tableau Nombres */}
-            <div className="overflow-x-auto mb-6">
-              <h3 className="text-lg font-semibold mb-2">Nombre par {keyName}</h3>
-              <table className="min-w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border px-4 py-2 text-left">{keyName}</th>
-                    {mergedTypes.map(type => <th key={type} className="border px-4 py-2 text-right">{type}</th>)}
-                    <th className="border px-4 py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableProjetsData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-100">
-                      <td className="border px-4 py-2">{row.name}</td>
-                      {mergedTypes.map(type => <td key={type} className="border px-4 py-2 text-right font-mono">{formatNumber(row[type])}</td>)}
-                      <td className="border px-4 py-2 text-right font-semibold text-green-700">{formatNumber(row.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-200 font-semibold">
-                    <td className="border px-4 py-2">Totaux</td>
-                    {mergedTypes.map(type => <td key={type} className="border px-4 py-2 text-right">{formatNumber(calculateTotals(tableProjetsData, mergedTypes)[type])}</td>)}
-                    <td className="border px-4 py-2 text-right">{formatNumber(calculateTotals(tableProjetsData, mergedTypes).total)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
+              {cData.map((entry, index) => (
+                <div key={entry.name} className="flex items-center gap-2">
+                  <div
+                    style={{ width: 20, height: 20, backgroundColor: COLORS[index % COLORS.length] }}
+                    className="rounded-sm"
+                  ></div>
+                  <span className="text-gray-700">{entry.name}</span>
+                </div>
+              ))}
             </div>
-
-            {/* Tableau Montants */}
-            <div className="overflow-x-auto mb-4">
-              <h3 className="text-lg font-semibold mb-2">Montant des crédits par {keyName}</h3>
-              <table className="min-w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border px-4 py-2 text-left">{keyName}</th>
-                    {mergedTypes.map(type => <th key={type} className="border px-4 py-2 text-right">{type}</th>)}
-                    <th className="border px-4 py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableCreditsData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-100">
-                      <td className="border px-4 py-2">{row.name}</td>
-                      {mergedTypes.map(type => <td key={type} className="border px-4 py-2 text-right font-mono">{formatMontant(row[type])}</td>)}
-                      <td className="border px-4 py-2 text-right font-semibold text-green-700">{formatMontant(row.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-200 font-semibold">
-                    <td className="border px-4 py-2">Totaux</td>
-                    {mergedTypes.map(type => <td key={type} className="border px-4 py-2 text-right">{formatMontant(calculateTotals(tableCreditsData, mergedTypes)[type])}</td>)}
-                    <td className="border px-4 py-2 text-right">{formatMontant(calculateTotals(tableCreditsData, mergedTypes).total)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => saveSectionAsImage(ref, `rapport_${keyName}.png`)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-md"
-              >
-                Enregistrer cette section
-              </button>
-            </div>
-          </>
+          </div>
         )}
+
+        {renderTable(pData, pTot, fmtNum, `Nombre de projets par ${key}`, `projets_par_${key}`)}
+        {renderTable(cData, cTot, fmtFCFA, `Montant des crédits par ${key}`, `credits_par_${key}`)}
+
+        <div className="text-center mt-5">
+          <button
+            onClick={() => saveImage(sections[key], `rapport_${key}`)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-sm mx-auto"
+          >
+            <Download className="w-4 h-4" /> Enregistrer la section
+          </button>
+        </div>
       </section>
     );
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center space-y-8">
-      <div className="w-full max-w-6xl flex justify-between mb-2">
+      <div className="w-full max-w-6xl flex justify-between items-center mb-4">
         <button
           onClick={() => navigate("/dashboard")}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition shadow-md"
+          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-sm"
         >
-          Retour au Dashboard
+          <Home className="w-5 h-5" /> Retour au Dashboard
         </button>
       </div>
 
-      <section className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-lg">
+      {/* Filtres */}
+      <section className="bg-white w-full max-w-6xl p-6 rounded-2xl shadow-md border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">
           Filtrer par date de comité de validation
         </h2>
         <div className="flex flex-col md:flex-row justify-center items-center gap-4">
-          <div>
-            <label className="block text-gray-600 mb-1">Date de début</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-              className="border px-3 py-2 rounded-md shadow-sm focus:ring focus:ring-green-300"/>
-          </div>
-          <div>
-            <label className="block text-gray-600 mb-1">Date de fin</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-              className="border px-3 py-2 rounded-md shadow-sm focus:ring focus:ring-green-300"/>
-          </div>
-          <button onClick={fetchAll} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md shadow-md">
+          {["start", "end"].map((k, i) => (
+            <div key={k}>
+              <label className="block text-gray-600 mb-1">{i ? "Date de fin" : "Date de début"}</label>
+              <input
+                type="date"
+                value={dates[k]}
+                onChange={e => setDates({ ...dates, [k]: e.target.value })}
+                className="border px-3 py-2 rounded-md shadow-sm focus:ring focus:ring-green-300"
+              />
+            </div>
+          ))}
+          <button
+            onClick={loadAll}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md shadow-sm"
+          >
             Appliquer
           </button>
         </div>
-        {globalError && <p className="mt-3 text-red-600 text-center">{globalError}</p>}
+        {err && <p className="mt-3 text-red-600 text-center">{err}</p>}
         {loading && <p className="mt-3 text-center text-gray-600">Chargement des données...</p>}
       </section>
 
-      {renderSection(deptRef, "Départements", deptProjets, deptCredits, typesDeptCount, typesDeptCredit, "departement")}
-      {renderSection(commRef, "Communes", commProjets, commCredits, typesCommCount, typesCommCredit, "commune")}
-      {renderSection(filRef, "Filières", filProjets, filCredits, typesFilCount, typesFilCredit, "filiere")}
-      {renderSection(pdaRef, "PDA", pdaProjets, pdaCredits, typesPdaCount, typesPdaCredit, "pda")}
-
+      {/* Sections */}
+      {renderSection("filiere", "Filières")}
+      {renderSection("pda", "PDA")}
+      {renderSection("departement", "Départements")}
+      {renderSection("commune", "Communes")}
     </div>
   );
 };
 
 export default Tableaux;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import React, { useEffect, useState } from "react";
+// import Plot from "react-plotly.js";
+// import axios from "axios";
+
+// function Graphique3DClairPDA() {
+//   const [dataPDA, setDataPDA] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+
+//   useEffect(() => {
+//     axios
+//       .get("http://127.0.0.1:5000/auth/stats/credits-par-pda", {
+//         params: {
+//           start_date: "2021-01-01",
+//           end_date: "2025-12-31",
+//         },
+//       })
+//       .then((response) => {
+//         const data = response.data.data;
+//         const total = data.reduce((acc, item) => acc + item.value, 0);
+//         const formatted = data.map((item) => ({
+//           ...item,
+//           percentage: ((item.value / total) * 100).toFixed(2),
+//         }));
+//         setDataPDA(formatted);
+//         setLoading(false);
+//       })
+//       .catch((err) => {
+//         console.error("Erreur API:", err);
+//         setError("Impossible de récupérer les données du graphique.");
+//         setLoading(false);
+//       });
+//   }, []);
+
+//   if (loading) return <p className="text-gray-500">Chargement du graphique...</p>;
+//   if (error) return <p className="text-red-500">{error}</p>;
+
+//   const noms = dataPDA.map((item) => item.name);
+//   const valeurs = dataPDA.map((item) => item.value);
+//   const pourcentages = dataPDA.map((item) => item.percentage);
+
+//   return (
+//     <div className="bg-white shadow-xl rounded-2xl p-6">
+//       <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">
+//         Répartition des crédits accordés par PDA (Vue 3D)
+//       </h2>
+
+//       <Plot
+//         data={[
+//           {
+//             type: "bar3d", // Effet 3D simulé via barres verticales
+//             x: noms,
+//             y: valeurs,
+//             text: pourcentages.map((p) => p + " %"),
+//             textposition: "auto",
+//             hovertext: noms.map(
+//               (n, i) =>
+//                 `${n}<br><b>${valeurs[i].toLocaleString()} FCFA</b><br>${pourcentages[i]} %`
+//             ),
+//             marker: {
+//               color: valeurs,
+//               colorscale: "Viridis",
+//               showscale: true,
+//               line: { color: "#fff", width: 1 },
+//             },
+//           },
+//         ]}
+//         layout={{
+//           title: {
+//             text: "Montant total des crédits par PDA",
+//             font: { size: 18 },
+//           },
+//           scene: {
+//             xaxis: { title: "Nom du PDA" },
+//             yaxis: { title: "Montant (FCFA)" },
+//             zaxis: { title: "" },
+//           },
+//           margin: { l: 50, r: 30, t: 60, b: 80 },
+//           height: 500,
+//           paper_bgcolor: "transparent",
+//           plot_bgcolor: "transparent",
+//           showlegend: false,
+//         }}
+//         config={{
+//           responsive: true,
+//           displayModeBar: true,
+//           scrollZoom: true,
+//           displaylogo: false,
+//         }}
+//       />
+//       <p className="text-sm text-gray-600 mt-2 text-center italic">
+//         Chaque barre représente un PDA. La hauteur indique le montant total accordé, et la
+//         couleur représente la part relative dans le total (%).
+//       </p>
+//     </div>
+//   );
+// }
+
+// export default Graphique3DClairPDA;

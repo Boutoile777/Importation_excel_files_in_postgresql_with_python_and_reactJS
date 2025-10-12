@@ -1366,6 +1366,8 @@ def add_type_projet():
 
 
 
+
+
 # 3️⃣ Nombre de promoteurs par filière 
 
 @auth_bp.route('/promoteurs-par-filiere', methods=['GET'])
@@ -1806,6 +1808,165 @@ def projets_par_commune():
                 result[commune]['total'] += nb
 
             return jsonify({'types_projet': list(type_map.values()), 'data': list(result.values())}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+
+
+
+
+
+# =====================================================
+# Route des statistiques graphiques
+# =====================================================
+
+
+# Par filière
+
+@auth_bp.route('/stats/credits-par-filiere', methods=['GET'])
+def stats_credits_par_filiere():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            query = """
+                SELECT f.nom_filiere, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN filiere f ON cf.id_filiere = f.id_filiere
+                WHERE cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation < %s::date
+                  AND cf.credit_accorde IS NOT NULL
+                GROUP BY f.nom_filiere
+                ORDER BY total_credits DESC;
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            data = [{'name': row[0], 'value': float(row[1] or 0)} for row in rows]
+            return jsonify({'data': data, 'start_date': start_date, 'end_date': end_date}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+# 📊 Statistiques des crédits accordés par PDA
+
+@auth_bp.route('/stats/credits-par-pda', methods=['GET'])
+def stats_credits_par_pda():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            query = """
+                SELECT p.nom_pda, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN commune c ON cf.id_commune = c.id_commune
+                JOIN pda p ON c.id_pda = p.id_pda
+                WHERE cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation < %s::date
+                  AND cf.credit_accorde IS NOT NULL
+                GROUP BY p.nom_pda
+                ORDER BY total_credits DESC;
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            data = [{'name': row[0], 'value': float(row[1] or 0)} for row in rows]
+            return jsonify({'data': data, 'start_date': start_date, 'end_date': end_date}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+# Par département
+
+@auth_bp.route('/stats/credits-par-departement', methods=['GET'])
+def stats_credits_par_departement():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            query = """
+                SELECT d.nom_departement, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN commune c ON cf.id_commune = c.id_commune
+                JOIN departement d ON c.id_departement = d.id_departement
+                WHERE cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation < %s::date
+                  AND cf.credit_accorde IS NOT NULL
+                GROUP BY d.nom_departement
+                ORDER BY total_credits DESC;
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            data = [{'name': row[0], 'value': float(row[1] or 0)} for row in rows]
+            return jsonify({'data': data, 'start_date': start_date, 'end_date': end_date}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+# Par commune
+@auth_bp.route('/stats/credits-par-commune', methods=['GET'])
+def stats_credits_par_commune():
+    try:
+        start_date = request.args.get('start_date', '2020-01-01')
+        end_date = request.args.get('end_date', '2025-01-01')
+
+        conn = get_connection()
+        if conn is None:
+            return jsonify({'error': 'Connexion à la base impossible.'}), 500
+
+        with conn.cursor() as cur:
+            query = """
+                SELECT c.nom_commune, SUM(cf.credit_accorde) AS total_credits
+                FROM credit_facilite cf
+                JOIN commune c ON cf.id_commune = c.id_commune
+                WHERE cf.date_comite_validation >= %s::date
+                  AND cf.date_comite_validation < %s::date
+                  AND cf.credit_accorde IS NOT NULL
+                GROUP BY c.nom_commune
+                ORDER BY total_credits DESC;
+            """
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+
+            data = [{'name': row[0], 'value': float(row[1] or 0)} for row in rows]
+            return jsonify({'data': data, 'start_date': start_date, 'end_date': end_date}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

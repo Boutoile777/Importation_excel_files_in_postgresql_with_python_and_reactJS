@@ -1,6 +1,7 @@
 # Node/React
 frontend/dashboard/node_modules/
 frontend/dashboard/public/
+node_modules
 
 # Python/Flask
 backend/venv/

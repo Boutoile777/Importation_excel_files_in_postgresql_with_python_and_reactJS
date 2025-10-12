@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@syncfusion/ej2-base": "^31.1.22",
+    "@syncfusion/ej2-data": "^31.1.23",
+    "@syncfusion/ej2-react-charts": "^31.1.23"
+  }
+}
